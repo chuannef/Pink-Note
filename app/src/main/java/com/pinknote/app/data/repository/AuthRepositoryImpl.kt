@@ -6,6 +6,7 @@ import com.pinknote.app.domain.model.AppResult
 import com.pinknote.app.domain.model.UserProfile
 import com.pinknote.app.domain.repository.AuthRepository
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -39,7 +40,7 @@ class AuthRepositoryImpl @Inject constructor(
             firebaseDataSource.registerWithEmail(name, email, password).also { userDao.upsert(it.toEntity()) }
         }.fold(
             onSuccess = { AppResult.Success(it) },
-            onFailure = { AppResult.Error(it.message ?: "Không thể đăng ký", it) }
+            onFailure = { AppResult.Error(it.toAuthMessage("Không thể đăng ký"), it) }
         )
     }
 
@@ -48,7 +49,7 @@ class AuthRepositoryImpl @Inject constructor(
             firebaseDataSource.loginWithEmail(email, password).also { userDao.upsert(it.toEntity()) }
         }.fold(
             onSuccess = { AppResult.Success(it) },
-            onFailure = { AppResult.Error(it.message ?: "Không thể đăng nhập", it) }
+            onFailure = { AppResult.Error(it.toAuthMessage("Không thể đăng nhập"), it) }
         )
     }
 
@@ -57,14 +58,14 @@ class AuthRepositoryImpl @Inject constructor(
             firebaseDataSource.loginWithGoogle(idToken).also { userDao.upsert(it.toEntity()) }
         }.fold(
             onSuccess = { AppResult.Success(it) },
-            onFailure = { AppResult.Error(it.message ?: "Không thể đăng nhập Google", it) }
+            onFailure = { AppResult.Error(it.toAuthMessage("Không thể đăng nhập Google"), it) }
         )
     }
 
     override suspend fun sendPasswordReset(email: String): AppResult<Unit> {
         return runCatching { firebaseDataSource.sendPasswordReset(email) }.fold(
             onSuccess = { AppResult.Success(Unit) },
-            onFailure = { AppResult.Error(it.message ?: "Không thể gửi email đặt lại mật khẩu", it) }
+            onFailure = { AppResult.Error(it.toAuthMessage("Không thể gửi email đặt lại mật khẩu"), it) }
         )
     }
 
@@ -75,7 +76,21 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun deleteAccount(): AppResult<Unit> {
         return runCatching { firebaseDataSource.deleteAccount() }.fold(
             onSuccess = { AppResult.Success(Unit) },
-            onFailure = { AppResult.Error(it.message ?: "Không thể xóa tài khoản", it) }
+            onFailure = { AppResult.Error(it.toAuthMessage("Không thể xóa tài khoản"), it) }
         )
+    }
+
+    private fun Throwable.toAuthMessage(fallback: String): String {
+        val authCode = (this as? FirebaseAuthException)?.errorCode
+        return when (authCode) {
+            "ERROR_CONFIGURATION_NOT_FOUND" ->
+                "Firebase Authentication chưa được bật hoặc chưa cấu hình provider. Hãy bật Email/Password hoặc Google trong Firebase Console."
+            "ERROR_EMAIL_ALREADY_IN_USE" -> "Email này đã được đăng ký."
+            "ERROR_INVALID_EMAIL" -> "Email không hợp lệ."
+            "ERROR_WEAK_PASSWORD" -> "Mật khẩu quá yếu, hãy nhập ít nhất 6 ký tự."
+            "ERROR_WRONG_PASSWORD", "ERROR_INVALID_CREDENTIAL" -> "Email hoặc mật khẩu không đúng."
+            "ERROR_USER_NOT_FOUND" -> "Tài khoản không tồn tại."
+            else -> message ?: fallback
+        }
     }
 }

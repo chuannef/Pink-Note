@@ -57,7 +57,7 @@ fun LoginScreen(
             context,
             GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestEmail()
-                .requestIdToken(context.getString(R.string.default_web_client_id))
+                .requestIdToken(context.getString(R.string.google_web_client_id))
                 .build()
         )
     }
