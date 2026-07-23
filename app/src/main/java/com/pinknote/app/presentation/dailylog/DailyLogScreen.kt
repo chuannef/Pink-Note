@@ -9,13 +9,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -29,6 +33,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.pinknote.app.presentation.common.PinkCard
+import com.pinknote.app.presentation.common.PinkPage
+import com.pinknote.app.presentation.common.PinkPrimaryButton
+import com.pinknote.app.presentation.theme.CreamWhite
 import java.time.LocalDate
 
 @Composable
@@ -67,81 +75,127 @@ fun DailyLogScreen(
         }
     }
 
-    Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        Text("Ghi chú ngày $date", style = MaterialTheme.typography.headlineSmall)
-        Text("Mức đau: ${pain.toInt()}")
-        Slider(value = pain, onValueChange = { pain = it }, valueRange = 0f..10f, steps = 9)
-        OutlinedTextField(value = mood, onValueChange = { mood = it }, label = { Text("Tâm trạng") }, modifier = Modifier.fillMaxWidth())
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-                value = temperature,
-                onValueChange = { temperature = it },
-                label = { Text("Nhiệt độ") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.weight(1f)
-            )
-            OutlinedTextField(
-                value = weight,
-                onValueChange = { weight = it },
-                label = { Text("Cân nặng") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.weight(1f)
-            )
-        }
-        Text("Triệu chứng")
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            symptomOptions.take(3).forEach { symptom ->
-                FilterChip(
-                    selected = selectedSymptoms.contains(symptom),
-                    onClick = {
-                        selectedSymptoms = if (selectedSymptoms.contains(symptom)) {
-                            selectedSymptoms - symptom
-                        } else {
-                            selectedSymptoms + symptom
-                        }
-                    },
-                    label = { Text(symptom) }
-                )
-            }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            symptomOptions.drop(3).forEach { symptom ->
-                FilterChip(
-                    selected = selectedSymptoms.contains(symptom),
-                    onClick = {
-                        selectedSymptoms = if (selectedSymptoms.contains(symptom)) selectedSymptoms - symptom else selectedSymptoms + symptom
-                    },
-                    label = { Text(symptom) }
-                )
-            }
-        }
-        OutlinedTextField(value = discharge, onValueChange = { discharge = it }, label = { Text("Khí hư") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = medicines, onValueChange = { medicines = it }, label = { Text("Thuốc đã uống") }, modifier = Modifier.fillMaxWidth())
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-            Text("Quan hệ")
-            Switch(checked = hadSex, onCheckedChange = { hadSex = it })
-        }
-        OutlinedTextField(value = note, onValueChange = { note = it }, label = { Text("Ghi chú") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
-        Button(
-            onClick = {
-                viewModel.saveLog(
-                    painLevel = pain.toInt(),
-                    mood = mood,
-                    bodyTemperature = temperature.toFloatOrNull(),
-                    weightKg = weight.toFloatOrNull(),
-                    symptoms = selectedSymptoms.toList(),
-                    discharge = discharge,
-                    medicines = medicines,
-                    hadSex = hadSex,
-                    note = note
-                )
-            },
-            modifier = Modifier.fillMaxWidth()
+    PinkPage {
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("Lưu ghi chú")
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Nhật ký ngày $date", style = MaterialTheme.typography.headlineMedium)
+                Text("Ghi lại những tín hiệu nhỏ để PinkNote hiểu chu kỳ của bạn hơn.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            PinkCard {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Icon(Icons.Default.MonitorHeart, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Text("Mức đau hôm nay: ${pain.toInt()}/10", style = MaterialTheme.typography.titleMedium)
+                }
+                Slider(value = pain, onValueChange = { pain = it }, valueRange = 0f..10f, steps = 9)
+                PinkField(value = mood, onValueChange = { mood = it }, label = "Tâm trạng")
+            }
+            PinkCard {
+                Text("Chỉ số cơ thể", style = MaterialTheme.typography.titleMedium)
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                    PinkField(
+                        value = temperature,
+                        onValueChange = { temperature = it },
+                        label = "Nhiệt độ",
+                        keyboardType = KeyboardType.Decimal,
+                        modifier = Modifier.weight(1f)
+                    )
+                    PinkField(
+                        value = weight,
+                        onValueChange = { weight = it },
+                        label = "Cân nặng",
+                        keyboardType = KeyboardType.Decimal,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+            PinkCard {
+                Text("Triệu chứng", style = MaterialTheme.typography.titleMedium)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    symptomOptions.take(3).forEach { symptom ->
+                        SymptomChip(symptom, selectedSymptoms.contains(symptom)) {
+                            selectedSymptoms = selectedSymptoms.toggle(symptom)
+                        }
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    symptomOptions.drop(3).forEach { symptom ->
+                        SymptomChip(symptom, selectedSymptoms.contains(symptom)) {
+                            selectedSymptoms = selectedSymptoms.toggle(symptom)
+                        }
+                    }
+                }
+                PinkField(value = discharge, onValueChange = { discharge = it }, label = "Khí hư")
+                PinkField(value = medicines, onValueChange = { medicines = it }, label = "Thuốc đã uống")
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(Icons.Default.Favorite, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Text("Quan hệ", style = MaterialTheme.typography.bodyLarge)
+                    }
+                    Switch(checked = hadSex, onCheckedChange = { hadSex = it })
+                }
+            }
+            PinkCard {
+                PinkField(value = note, onValueChange = { note = it }, label = "Ghi chú", minLines = 4)
+                PinkPrimaryButton(
+                    onClick = {
+                        viewModel.saveLog(
+                            painLevel = pain.toInt(),
+                            mood = mood,
+                            bodyTemperature = temperature.toFloatOrNull(),
+                            weightKg = weight.toFloatOrNull(),
+                            symptoms = selectedSymptoms.toList(),
+                            discharge = discharge,
+                            medicines = medicines,
+                            hadSex = hadSex,
+                            note = note
+                        )
+                    }
+                ) {
+                    Text("Lưu ghi chú")
+                }
+            }
         }
     }
+}
+
+@Composable
+private fun SymptomChip(symptom: String, selected: Boolean, onClick: () -> Unit) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = { Text(symptom) }
+    )
+}
+
+@Composable
+private fun PinkField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    keyboardType: KeyboardType = KeyboardType.Text,
+    minLines: Int = 1
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        minLines = minLines,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        shape = MaterialTheme.shapes.large,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.65f),
+            focusedContainerColor = CreamWhite,
+            unfocusedContainerColor = CreamWhite
+        ),
+        modifier = modifier.fillMaxWidth()
+    )
+}
+
+private fun Set<String>.toggle(value: String): Set<String> {
+    return if (contains(value)) this - value else this + value
 }
