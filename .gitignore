@@ -23,6 +23,7 @@ captures/
 *.dex
 
 # Kotlin
+.kotlin/
 *.class
 *.kotlin_module
 

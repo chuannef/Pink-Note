@@ -1,11 +1,15 @@
 package com.pinknote.app.worker
 
+import android.Manifest
+import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -19,6 +23,7 @@ class ReminderWorker @AssistedInject constructor(
     @Assisted workerParams: WorkerParameters
 ) : CoroutineWorker(appContext, workerParams) {
 
+    @SuppressLint("MissingPermission")
     override suspend fun doWork(): Result {
         createChannel()
         val title = inputData.getString(KEY_TITLE).orEmpty()
@@ -32,22 +37,30 @@ class ReminderWorker @AssistedInject constructor(
             .setAutoCancel(true)
             .build()
 
-        runCatching {
-            NotificationManagerCompat.from(applicationContext).notify(id, notification)
+        if (canPostNotifications()) {
+            runCatching {
+                NotificationManagerCompat.from(applicationContext).notify(id, notification)
+            }
         }
         return Result.success()
     }
 
     private fun createChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "PinkNote Reminders",
-                NotificationManager.IMPORTANCE_DEFAULT
-            )
-            val manager = applicationContext.getSystemService(NotificationManager::class.java)
-            manager.createNotificationChannel(channel)
-        }
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            "PinkNote Reminders",
+            NotificationManager.IMPORTANCE_DEFAULT
+        )
+        val manager = applicationContext.getSystemService(NotificationManager::class.java)
+        manager.createNotificationChannel(channel)
+    }
+
+    private fun canPostNotifications(): Boolean {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(
+                applicationContext,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
     }
 
     companion object {
