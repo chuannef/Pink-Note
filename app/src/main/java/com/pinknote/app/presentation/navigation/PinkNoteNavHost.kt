@@ -2,7 +2,6 @@ package com.pinknote.app.presentation.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
@@ -38,7 +37,6 @@ import com.pinknote.app.presentation.profile.EditProfileScreen
 import com.pinknote.app.presentation.profile.ProfileScreen
 import com.pinknote.app.presentation.reminder.ReminderScreen
 import com.pinknote.app.presentation.settings.SettingsScreen
-import com.pinknote.app.presentation.statistics.StatisticsScreen
 
 private data class BottomItem(
     val route: AppRoute,
@@ -49,7 +47,6 @@ private data class BottomItem(
 private val bottomItems = listOf(
     BottomItem(AppRoute.Home, "Home", Icons.Default.Home),
     BottomItem(AppRoute.Calendar, "Lịch", Icons.Default.CalendarMonth),
-    BottomItem(AppRoute.Statistics, "Thống kê", Icons.Default.BarChart),
     BottomItem(AppRoute.Reminder, "Nhắc", Icons.Default.Notifications),
     BottomItem(AppRoute.Profile, "Hồ sơ", Icons.Default.Person),
     BottomItem(AppRoute.Settings, "Cài đặt", Icons.Default.Settings)
@@ -149,9 +146,6 @@ fun PinkNoteNavHost(navController: NavHostController = rememberNavController()) 
                 arguments = listOf(navArgument("date") { type = NavType.StringType })
             ) {
                 DailyLogScreen(dateText = it.arguments?.getString("date").orEmpty())
-            }
-            composable(AppRoute.Statistics.route) {
-                StatisticsScreen()
             }
             composable(AppRoute.Reminder.route) {
                 ReminderScreen()

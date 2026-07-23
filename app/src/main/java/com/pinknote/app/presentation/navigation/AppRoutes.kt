@@ -10,7 +10,6 @@ sealed class AppRoute(val route: String) {
     data object DailyLog : AppRoute("daily_log/{date}") {
         fun create(date: String) = "daily_log/$date"
     }
-    data object Statistics : AppRoute("statistics")
     data object Reminder : AppRoute("reminder")
     data object Profile : AppRoute("profile")
     data object Settings : AppRoute("settings")

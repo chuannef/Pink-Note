@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -36,9 +37,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.github.mikephil.charting.charts.LineChart
+import com.github.mikephil.charting.components.XAxis
+import com.github.mikephil.charting.data.Entry
+import com.github.mikephil.charting.data.LineData
+import com.github.mikephil.charting.data.LineDataSet
+import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
+import com.pinknote.app.domain.model.DailyLog
 import com.pinknote.app.presentation.common.PinkCard
 import com.pinknote.app.presentation.common.PinkMetric
 import com.pinknote.app.presentation.common.PinkPage
@@ -46,6 +56,9 @@ import com.pinknote.app.presentation.common.PinkPrimaryButton
 import com.pinknote.app.presentation.theme.BlushSurface
 import com.pinknote.app.presentation.theme.CreamWhite
 import com.pinknote.app.presentation.theme.PastelPink
+import com.pinknote.app.presentation.theme.RoseDeep
+import com.pinknote.app.presentation.statistics.StatisticsUiState
+import com.pinknote.app.presentation.statistics.StatisticsViewModel
 import com.pinknote.app.utils.DateUtils.toStorageString
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
@@ -53,9 +66,11 @@ import java.time.temporal.ChronoUnit
 @Composable
 fun HomeScreen(
     onOpenPrediction: () -> Unit,
-    viewModel: HomeViewModel = hiltViewModel()
+    viewModel: HomeViewModel = hiltViewModel(),
+    statisticsViewModel: StatisticsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    val statisticsState by statisticsViewModel.uiState.collectAsState()
     val prediction = state.prediction
     val rawProgress = prediction?.let {
         val distance = ChronoUnit.DAYS.between(LocalDate.now(), it.nextPeriodStart).toFloat()
@@ -94,8 +109,9 @@ fun HomeScreen(
                     supporting = "Theo chu kỳ"
                 )
             }
-            CycleSetupCard(state = state, onSave = viewModel::saveCycle)
             TipCard()
+            StatisticsSummary(statisticsState)
+            CycleSetupCard(state = state, onSave = viewModel::saveCycle)
             Spacer(Modifier.height(8.dp))
         }
     }
@@ -156,6 +172,134 @@ private fun CycleHero(progress: Float, countdownText: String, onOpenPrediction: 
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun StatisticsSummary(state: StatisticsUiState) {
+    PinkCard(containerColor = CreamWhite) {
+        Text("Thống kê nhanh", style = MaterialTheme.typography.titleMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+            StatTile(
+                label = "Chu kỳ",
+                value = "${state.cycle?.cycleLength ?: 0} ngày",
+                modifier = Modifier.weight(1f),
+                supporting = "Gần nhất"
+            )
+            StatTile(
+                label = "Hành kinh",
+                value = "${state.cycle?.periodLength ?: 0} ngày",
+                modifier = Modifier.weight(1f),
+                supporting = "Thiết lập"
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+            StatTile(
+                label = "Mức đau TB",
+                value = "%.1f".format(state.averagePain),
+                modifier = Modifier.weight(1f),
+                supporting = "Từ nhật ký"
+            )
+            StatTile(
+                label = "Theo dõi",
+                value = "${state.trackedMonths} tháng",
+                modifier = Modifier.weight(1f),
+                supporting = "Có dữ liệu"
+            )
+        }
+        Text("Biểu đồ mức đau", style = MaterialTheme.typography.titleSmall)
+        PainTrendChart(logs = state.logs)
+    }
+}
+
+@Composable
+private fun PainTrendChart(logs: List<DailyLog>) {
+    val chartLogs = remember(logs) { logs.sortedBy { it.date }.takeLast(12) }
+    val entries = remember(chartLogs) {
+        chartLogs.mapIndexed { index, log -> Entry(index.toFloat(), log.painLevel.toFloat()) }
+    }
+    val labels = remember(chartLogs) {
+        chartLogs.map { "${it.date.dayOfMonth}/${it.date.monthValue}" }
+    }
+
+    if (entries.isEmpty()) {
+        Text(
+            "Chưa có nhật ký để vẽ biểu đồ. Hãy ghi lại mức đau mỗi ngày để PinkNote tổng hợp xu hướng cho bạn.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        return
+    }
+
+    val primaryColor = RoseDeep.toArgb()
+    val surfaceColor = CreamWhite.toArgb()
+    val gridColor = MaterialTheme.colorScheme.outlineVariant.toArgb()
+    val textColor = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
+
+    AndroidView(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(220.dp),
+        factory = { context ->
+            LineChart(context).apply {
+                description.isEnabled = false
+                legend.isEnabled = false
+                setTouchEnabled(true)
+                setPinchZoom(false)
+                setScaleEnabled(false)
+                setDrawGridBackground(false)
+                setNoDataText("")
+                axisRight.isEnabled = false
+                axisLeft.axisMinimum = 0f
+                axisLeft.axisMaximum = 10f
+                axisLeft.granularity = 1f
+                xAxis.position = XAxis.XAxisPosition.BOTTOM
+                xAxis.granularity = 1f
+                xAxis.setDrawGridLines(false)
+                extraBottomOffset = 8f
+                minOffset = 12f
+            }
+        },
+        update = { chart ->
+            val dataSet = LineDataSet(entries, "Mức đau").apply {
+                color = primaryColor
+                valueTextColor = textColor
+                lineWidth = 2.8f
+                circleRadius = 4.5f
+                setCircleColor(primaryColor)
+                setDrawCircleHole(true)
+                circleHoleColor = surfaceColor
+                setDrawFilled(true)
+                fillColor = primaryColor
+                fillAlpha = 36
+                mode = LineDataSet.Mode.CUBIC_BEZIER
+                setDrawValues(entries.size <= 7)
+            }
+
+            chart.axisLeft.textColor = textColor
+            chart.axisLeft.gridColor = gridColor
+            chart.xAxis.textColor = textColor
+            chart.xAxis.valueFormatter = IndexAxisValueFormatter(labels)
+            chart.xAxis.labelCount = minOf(labels.size, 5).coerceAtLeast(1)
+            chart.data = LineData(dataSet).apply {
+                setValueTextSize(10f)
+            }
+            chart.invalidate()
+        }
+    )
+}
+
+@Composable
+private fun StatTile(label: String, value: String, supporting: String, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .background(BlushSurface.copy(alpha = 0.72f), RoundedCornerShape(20.dp))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Text(supporting, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
