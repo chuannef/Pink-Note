@@ -102,30 +102,130 @@ class PredictCycleUseCase @Inject constructor() {
         val prediction = invoke(settings, today, logs)
         val firstDay = monthStart.withDayOfMonth(1)
         val endDay = firstDay.plusMonths(1).minusDays(1)
+        val currentPeriodStart = prediction.nextPeriodStart.minusDays(prediction.weightedCycleLength.toLong())
+        val periodStarts = buildPeriodStartsForCalendar(
+            currentPeriodStart = currentPeriodStart,
+            cycleLength = prediction.weightedCycleLength,
+            periodLength = prediction.weightedPeriodLength,
+            firstDay = firstDay,
+            endDay = endDay,
+            fertilePadding = (prediction.cycleVariabilityDays / 3).coerceIn(0, 4)
+        )
         return generateSequence(firstDay) { date ->
             if (date < endDay) date.plusDays(1) else null
         }.map { date ->
             CalendarDay(
                 date = date,
-                type = resolveTypeForDate(
+                type = resolveTypeForCalendarDate(
                     date = date,
                     periodConfirmation = periodConfirmations[date],
-                    currentPeriodStart = prediction.nextPeriodStart.minusDays(prediction.weightedCycleLength.toLong()),
-                    currentPeriodEnd = prediction.nextPeriodStart.minusDays(prediction.weightedCycleLength.toLong())
-                        .plusDays(prediction.weightedPeriodLength.toLong() - 1),
-                    predictedPeriodStart = prediction.nextPeriodStart,
-                    predictedPeriodEnd = prediction.nextPeriodEnd,
-                    ovulationDate = prediction.ovulationDate,
-                    fertileStart = prediction.fertileStart,
-                    fertileEnd = prediction.fertileEnd,
-                    pmsStart = prediction.pmsStart,
-                    pmsEnd = prediction.pmsEnd,
+                    currentPeriodStart = currentPeriodStart,
+                    nextPeriodStart = prediction.nextPeriodStart,
+                    periodStarts = periodStarts,
+                    periodLength = prediction.weightedPeriodLength,
+                    fertilePadding = (prediction.cycleVariabilityDays / 3).coerceIn(0, 4),
                     today = today,
                     isLate = prediction.isLate
                 ),
                 hasLog = loggedDates.contains(date)
             )
         }.toList()
+    }
+
+    private fun buildPeriodStartsForCalendar(
+        currentPeriodStart: LocalDate,
+        cycleLength: Int,
+        periodLength: Int,
+        firstDay: LocalDate,
+        endDay: LocalDate,
+        fertilePadding: Int
+    ): List<LocalDate> {
+        val cycleDays = cycleLength.toLong()
+        val lookAheadDays = 14L + Constants.FERTILE_WINDOW_START_OFFSET + fertilePadding + periodLength
+        var periodStart = currentPeriodStart
+
+        while (periodStart.isAfter(firstDay)) {
+            periodStart = periodStart.minusDays(cycleDays)
+        }
+
+        val periodStarts = mutableListOf<LocalDate>()
+        val scheduleEnd = endDay.plusDays(lookAheadDays)
+        while (!periodStart.isAfter(scheduleEnd)) {
+            periodStarts.add(periodStart)
+            periodStart = periodStart.plusDays(cycleDays)
+        }
+        return periodStarts
+    }
+
+    private fun resolveTypeForCalendarDate(
+        date: LocalDate,
+        periodConfirmation: Boolean?,
+        currentPeriodStart: LocalDate,
+        nextPeriodStart: LocalDate,
+        periodStarts: List<LocalDate>,
+        periodLength: Int,
+        fertilePadding: Int,
+        today: LocalDate,
+        isLate: Boolean
+    ): CalendarDayType {
+        val predictedType = resolveScheduledTypeForDate(
+            date = date,
+            currentPeriodStart = currentPeriodStart,
+            nextPeriodStart = nextPeriodStart,
+            periodStarts = periodStarts,
+            periodLength = periodLength,
+            fertilePadding = fertilePadding,
+            today = today,
+            isLate = isLate
+        )
+
+        return when (periodConfirmation) {
+            true -> CalendarDayType.PERIOD
+            false -> if (predictedType in periodLikeTypes) CalendarDayType.NORMAL else predictedType
+            null -> predictedType
+        }
+    }
+
+    private fun resolveScheduledTypeForDate(
+        date: LocalDate,
+        currentPeriodStart: LocalDate,
+        nextPeriodStart: LocalDate,
+        periodStarts: List<LocalDate>,
+        periodLength: Int,
+        fertilePadding: Int,
+        today: LocalDate,
+        isLate: Boolean
+    ): CalendarDayType {
+        periodStarts.forEach { periodStart ->
+            val periodEnd = periodStart.plusDays(periodLength.toLong() - 1)
+            if (!date.isBefore(periodStart) && !date.isAfter(periodEnd)) {
+                return when {
+                    periodStart == currentPeriodStart -> CalendarDayType.PERIOD
+                    isLate && periodStart == nextPeriodStart && !date.isAfter(today) -> CalendarDayType.LATE_PERIOD
+                    else -> CalendarDayType.PREDICTED_PERIOD
+                }
+            }
+        }
+
+        if (isLate && !date.isBefore(nextPeriodStart) && !date.isAfter(today)) {
+            return CalendarDayType.LATE_PERIOD
+        }
+
+        periodStarts.forEach { periodStart ->
+            val ovulationDate = periodStart.minusDays(14)
+            val fertileStart = ovulationDate.minusDays(Constants.FERTILE_WINDOW_START_OFFSET.toLong() + fertilePadding)
+            val fertileEnd = ovulationDate.plusDays(Constants.FERTILE_WINDOW_END_OFFSET.toLong() + fertilePadding)
+            val pmsStart = periodStart.minusDays(7 + fertilePadding.toLong())
+            val pmsEnd = periodStart.minusDays(1)
+
+            when {
+                date == ovulationDate -> return CalendarDayType.OVULATION
+                !date.isBefore(fertileStart) && !date.isAfter(fertileEnd) -> return CalendarDayType.FERTILE
+                !date.isBefore(pmsStart) && !date.isAfter(pmsEnd) -> return CalendarDayType.PMS
+            }
+        }
+
+        return CalendarDayType.NORMAL
     }
 
     private fun resolveTypeForDate(

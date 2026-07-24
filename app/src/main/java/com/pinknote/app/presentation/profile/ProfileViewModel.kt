@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -22,7 +23,16 @@ class ProfileViewModel @Inject constructor(
     private val userRepository: UserRepository
 ) : ViewModel() {
     val profile: StateFlow<UserProfile?> = authRepository.currentUser.flatMapLatest { user ->
-        user?.uid?.let { userRepository.observeProfile(it) } ?: flowOf(null)
+        user?.uid?.let { uid ->
+            userRepository.observeProfile(uid).map { profile ->
+                val currentProfile = profile ?: user
+                currentProfile.copy(
+                    email = currentProfile.email.ifBlank { user.email },
+                    name = currentProfile.name.ifBlank { user.name },
+                    avatarUrl = currentProfile.avatarUrl ?: user.avatarUrl
+                )
+            }
+        } ?: flowOf(null)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun update(profile: UserProfile) {

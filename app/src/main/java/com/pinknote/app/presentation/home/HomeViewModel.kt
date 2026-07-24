@@ -10,7 +10,6 @@ import com.pinknote.app.domain.model.UserProfile
 import com.pinknote.app.domain.repository.AuthRepository
 import com.pinknote.app.domain.repository.CycleRepository
 import com.pinknote.app.domain.usecase.PredictCycleUseCase
-import com.pinknote.app.utils.Constants
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -24,11 +23,7 @@ import javax.inject.Inject
 
 data class HomeUiState(
     val user: UserProfile? = null,
-    val cycleSettings: CycleSettings = CycleSettings(
-        lastPeriodStart = LocalDate.now(),
-        cycleLength = Constants.DEFAULT_CYCLE_LENGTH,
-        periodLength = Constants.DEFAULT_PERIOD_LENGTH
-    ),
+    val cycleSettings: CycleSettings? = null,
     val prediction: CyclePrediction? = null,
     val isEmpty: Boolean = false
 )
@@ -48,16 +43,10 @@ class HomeViewModel @Inject constructor(
                 cycleRepository.observeDailyLogs(user.uid),
                 flowOf(user)
             ) { cycle, logs, currentUser ->
-                val settings = cycle ?: CycleSettings(
-                    uid = currentUser.uid,
-                    lastPeriodStart = LocalDate.now(),
-                    cycleLength = Constants.DEFAULT_CYCLE_LENGTH,
-                    periodLength = Constants.DEFAULT_PERIOD_LENGTH
-                )
                 HomeUiState(
                     user = currentUser,
-                    cycleSettings = settings,
-                    prediction = predictCycleUseCase(settings, logs = logs),
+                    cycleSettings = cycle,
+                    prediction = cycle?.let { settings -> predictCycleUseCase(settings, logs = logs) },
                     isEmpty = cycle == null
                 )
             }

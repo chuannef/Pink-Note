@@ -191,13 +191,13 @@ private fun StatisticsSummary(state: StatisticsUiState) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
             StatTile(
                 label = "Chu kỳ",
-                value = "${state.cycle?.cycleLength ?: 0} ngày",
+                value = state.cycle?.let { "${it.cycleLength} ngày" } ?: "Chưa có",
                 modifier = Modifier.weight(1f),
                 supporting = "Gần nhất"
             )
             StatTile(
                 label = "Hành kinh",
-                value = "${state.cycle?.periodLength ?: 0} ngày",
+                value = state.cycle?.let { "${it.periodLength} ngày" } ?: "Chưa có",
                 modifier = Modifier.weight(1f),
                 supporting = "Thiết lập"
             )
@@ -314,43 +314,78 @@ private fun StatTile(label: String, value: String, supporting: String, modifier:
 
 @Composable
 private fun CycleSetupCard(state: HomeUiState, onSave: (LocalDate, Int, Int) -> Unit) {
-    var lastPeriod by remember(state.cycleSettings.lastPeriodStart) { mutableStateOf(state.cycleSettings.lastPeriodStart.toStorageString()) }
-    var cycleLength by remember(state.cycleSettings.cycleLength) { mutableStateOf(state.cycleSettings.cycleLength.toString()) }
-    var periodLength by remember(state.cycleSettings.periodLength) { mutableStateOf(state.cycleSettings.periodLength.toString()) }
+    val settings = state.cycleSettings
+    var lastPeriod by remember(settings?.lastPeriodStart) {
+        mutableStateOf(settings?.lastPeriodStart?.toStorageString().orEmpty())
+    }
+    var cycleLength by remember(settings?.cycleLength) {
+        mutableStateOf(settings?.cycleLength?.toString().orEmpty())
+    }
+    var periodLength by remember(settings?.periodLength) {
+        mutableStateOf(settings?.periodLength?.toString().orEmpty())
+    }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     PinkCard {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             Column {
                 Text("Thiết lập chu kỳ", style = MaterialTheme.typography.titleMedium)
-                Text("Bạn có thể chỉnh lại bất cứ lúc nào.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    if (state.isEmpty) "Hãy nhập dữ liệu chu kỳ đầu tiên của bạn." else "Bạn có thể chỉnh lại bất cứ lúc nào.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
         PinkField(
             value = lastPeriod,
-            onValueChange = { lastPeriod = it },
+            onValueChange = {
+                lastPeriod = it
+                errorMessage = null
+            },
             label = "Ngày bắt đầu gần nhất yyyy-MM-dd"
         )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             PinkField(
                 value = cycleLength,
-                onValueChange = { cycleLength = it },
+                onValueChange = {
+                    cycleLength = it
+                    errorMessage = null
+                },
                 label = "Chu kỳ",
                 modifier = Modifier.weight(1f),
                 keyboardType = KeyboardType.Number
             )
             PinkField(
                 value = periodLength,
-                onValueChange = { periodLength = it },
+                onValueChange = {
+                    periodLength = it
+                    errorMessage = null
+                },
                 label = "Hành kinh",
                 modifier = Modifier.weight(1f),
                 keyboardType = KeyboardType.Number
             )
         }
+        errorMessage?.let {
+            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+        }
         PinkPrimaryButton(
             onClick = {
-                val date = runCatching { LocalDate.parse(lastPeriod) }.getOrElse { LocalDate.now() }
-                onSave(date, cycleLength.toIntOrNull() ?: 28, periodLength.toIntOrNull() ?: 5)
+                val date = runCatching { LocalDate.parse(lastPeriod) }.getOrNull()
+                val cycleDays = cycleLength.toIntOrNull()
+                val periodDays = periodLength.toIntOrNull()
+                errorMessage = when {
+                    date == null -> "Hãy nhập ngày theo định dạng yyyy-MM-dd."
+                    cycleDays == null || cycleDays <= 0 -> "Hãy nhập độ dài chu kỳ hợp lệ."
+                    periodDays == null || periodDays <= 0 -> "Hãy nhập số ngày hành kinh hợp lệ."
+                    periodDays >= cycleDays -> "Số ngày hành kinh phải nhỏ hơn độ dài chu kỳ."
+                    else -> null
+                }
+                if (date != null && cycleDays != null && periodDays != null && errorMessage == null) {
+                    onSave(date, cycleDays, periodDays)
+                }
             }
         ) {
             Text("Lưu thiết lập")

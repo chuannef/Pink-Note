@@ -56,7 +56,14 @@ fun CalendarScreen(
     PinkPage {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Lịch chu kỳ", style = MaterialTheme.typography.headlineMedium)
-            Text("Chạm vào từng ngày để ghi chú cảm giác, triệu chứng và thuốc đã dùng.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                if (state.hasCycleSetup) {
+                    "Chạm vào từng ngày để ghi chú cảm giác, triệu chứng và thuốc đã dùng."
+                } else {
+                    "Hãy thiết lập chu kỳ ở trang Home để Pink Note bắt đầu dự đoán lịch."
+                },
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
         PinkCard {
             Row(
@@ -69,7 +76,11 @@ fun CalendarScreen(
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(state.month.format(formatter), style = MaterialTheme.typography.headlineSmall)
-                    Text("Theo dõi tháng này", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        if (state.hasCycleSetup) "Theo dõi tháng này" else "Chưa có dữ liệu dự đoán",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 IconButton(onClick = viewModel::nextMonth) {
                     Icon(Icons.Default.ChevronRight, contentDescription = "Tháng sau")
@@ -101,15 +112,26 @@ fun CalendarScreen(
                 }
             }
         }
-        PinkCard {
-            Text("Chú thích", style = MaterialTheme.typography.titleMedium)
-            LegendRow("Hành kinh", PeriodRed)
-            LegendRow("Hành kinh dự kiến", PeriodRed.copy(alpha = 0.55f))
-            LegendRow("Trễ kinh", Color(0xFFB71C1C))
-            LegendRow("Rụng trứng ước tính", OvulationGreen)
-            LegendRow("Cửa sổ thụ thai", FertileYellow)
-            LegendRow("Tiền kinh nguyệt", Color(0xFFCE93D8))
-            LegendRow("Ngày bình thường", CalmGray.copy(alpha = 0.5f))
+        if (state.hasCycleSetup) {
+            PinkCard {
+                Text("Chú thích", style = MaterialTheme.typography.titleMedium)
+                LegendRow("Hành kinh", PeriodRed)
+                LegendRow("Hành kinh dự kiến", PeriodRed.copy(alpha = 0.55f))
+                LegendRow("Trễ kinh", Color(0xFFB71C1C))
+                LegendRow("Rụng trứng ước tính", OvulationGreen)
+                LegendRow("Cửa sổ thụ thai", FertileYellow)
+                LegendRow("Tiền kinh nguyệt", Color(0xFFCE93D8))
+                LegendRow("Ngày bình thường", CalmGray.copy(alpha = 0.5f))
+            }
+        } else {
+            PinkCard {
+                Text("Chưa thiết lập chu kỳ", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Sau khi nhập ngày bắt đầu kỳ kinh, độ dài chu kỳ và số ngày hành kinh, lịch sẽ hiển thị các kỳ dự đoán tiếp theo.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

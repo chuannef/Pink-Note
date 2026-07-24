@@ -5,7 +5,7 @@ package com.pinknote.app.presentation.calendar
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pinknote.app.domain.model.CalendarDay
-import com.pinknote.app.domain.model.CycleSettings
+import com.pinknote.app.domain.model.CalendarDayType
 import com.pinknote.app.domain.repository.AuthRepository
 import com.pinknote.app.domain.repository.CycleRepository
 import com.pinknote.app.domain.usecase.PredictCycleUseCase
@@ -23,7 +23,8 @@ import javax.inject.Inject
 data class CalendarUiState(
     val month: LocalDate = LocalDate.now().withDayOfMonth(1),
     val days: List<CalendarDay> = emptyList(),
-    val selectedDate: LocalDate = LocalDate.now()
+    val selectedDate: LocalDate = LocalDate.now(),
+    val hasCycleSetup: Boolean = false
 )
 
 @HiltViewModel
@@ -45,17 +46,22 @@ class CalendarViewModel @Inject constructor(
                 cycleRepository.observeCycle(user.uid),
                 cycleRepository.observeDailyLogs(user.uid)
             ) { currentMonth, selected, cycle, logs ->
-                val settings = cycle ?: CycleSettings(uid = user.uid)
+                val loggedDates = logs.map { it.date }.toSet()
                 CalendarUiState(
                     month = currentMonth,
                     selectedDate = selected,
-                    days = predictCycleUseCase.buildCalendarDays(
-                        settings = settings,
-                        monthStart = currentMonth,
-                        loggedDates = logs.map { it.date }.toSet(),
-                        periodConfirmations = logs.associate { it.date to it.isPeriodDay },
-                        logs = logs
-                    )
+                    hasCycleSetup = cycle != null,
+                    days = if (cycle == null) {
+                        buildEmptyCalendarDays(currentMonth, loggedDates)
+                    } else {
+                        predictCycleUseCase.buildCalendarDays(
+                            settings = cycle,
+                            monthStart = currentMonth,
+                            loggedDates = loggedDates,
+                            periodConfirmations = logs.associate { it.date to it.isPeriodDay },
+                            logs = logs
+                        )
+                    }
                 )
             }
         }
@@ -71,5 +77,19 @@ class CalendarViewModel @Inject constructor(
 
     fun previousMonth() {
         month.value = month.value.minusMonths(1)
+    }
+
+    private fun buildEmptyCalendarDays(monthStart: LocalDate, loggedDates: Set<LocalDate>): List<CalendarDay> {
+        val firstDay = monthStart.withDayOfMonth(1)
+        val endDay = firstDay.plusMonths(1).minusDays(1)
+        return generateSequence(firstDay) { date ->
+            if (date < endDay) date.plusDays(1) else null
+        }.map { date ->
+            CalendarDay(
+                date = date,
+                type = CalendarDayType.NORMAL,
+                hasLog = loggedDates.contains(date)
+            )
+        }.toList()
     }
 }

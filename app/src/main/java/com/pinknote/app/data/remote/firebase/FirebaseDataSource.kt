@@ -12,6 +12,7 @@ import com.pinknote.app.utils.AdminPolicy
 import com.pinknote.app.utils.Constants
 import com.pinknote.app.utils.DateUtils.toStorageString
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -50,7 +51,7 @@ class FirebaseDataSource @Inject constructor(
         val profile = UserProfile(
             uid = firebaseUser.uid,
             name = name,
-            email = email,
+            email = firebaseUser.email.orEmpty().ifBlank { email },
             avatarUrl = firebaseUser.photoUrl?.toString()
         )
         saveUser(profile)
@@ -60,24 +61,14 @@ class FirebaseDataSource @Inject constructor(
     suspend fun loginWithEmail(email: String, password: String): UserProfile {
         val result = auth.signInWithEmailAndPassword(email, password).await()
         val firebaseUser = requireNotNull(result.user)
-        return getUser(firebaseUser.uid) ?: UserProfile(
-            uid = firebaseUser.uid,
-            name = firebaseUser.displayName.orEmpty(),
-            email = firebaseUser.email.orEmpty(),
-            avatarUrl = firebaseUser.photoUrl?.toString()
-        ).also { saveUser(it) }
+        return resolveAuthProfile(firebaseUser, fallbackEmail = email)
     }
 
     suspend fun loginWithGoogle(idToken: String): UserProfile {
         val credential = GoogleAuthProvider.getCredential(idToken, null)
         val result = auth.signInWithCredential(credential).await()
         val firebaseUser = requireNotNull(result.user)
-        return getUser(firebaseUser.uid) ?: UserProfile(
-            uid = firebaseUser.uid,
-            name = firebaseUser.displayName.orEmpty(),
-            email = firebaseUser.email.orEmpty(),
-            avatarUrl = firebaseUser.photoUrl?.toString()
-        ).also { saveUser(it) }
+        return resolveAuthProfile(firebaseUser)
     }
 
     suspend fun sendPasswordReset(email: String) {
@@ -91,6 +82,30 @@ class FirebaseDataSource @Inject constructor(
 
     suspend fun deleteAccount() {
         auth.currentUser?.delete()?.await()
+    }
+
+    private suspend fun resolveAuthProfile(
+        firebaseUser: FirebaseUser,
+        fallbackEmail: String = ""
+    ): UserProfile {
+        val authEmail = firebaseUser.email.orEmpty().ifBlank { fallbackEmail }
+        val authName = firebaseUser.displayName.orEmpty()
+        val authAvatar = firebaseUser.photoUrl?.toString()
+        val storedProfile = getUser(firebaseUser.uid)
+        val resolvedProfile = storedProfile?.copy(
+            name = storedProfile.name.ifBlank { authName },
+            email = storedProfile.email.ifBlank { authEmail },
+            avatarUrl = storedProfile.avatarUrl ?: authAvatar
+        ) ?: UserProfile(
+            uid = firebaseUser.uid,
+            name = authName,
+            email = authEmail,
+            avatarUrl = authAvatar
+        )
+        if (storedProfile != resolvedProfile) {
+            saveUser(resolvedProfile)
+        }
+        return resolvedProfile
     }
 
     suspend fun saveUser(profile: UserProfile) {
