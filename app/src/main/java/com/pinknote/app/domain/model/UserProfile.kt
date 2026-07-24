@@ -14,5 +14,7 @@ data class UserProfile(
     val averageCycleLength: Int = 28,
     val periodLength: Int = 5,
     val role: String = "user",
+    val accessCount: Long = 0L,
+    val lastAccessAtEpochMillis: Long? = null,
     val createdAtEpochMillis: Long = System.currentTimeMillis()
 )

@@ -13,25 +13,32 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pinknote.app.domain.model.UserProfile
@@ -79,6 +86,12 @@ fun AdminScreen(
             }
 
             AdminSummary(state = state)
+            AdminAccessSummary(state = state)
+            PromoteAdminCard(
+                message = state.actionMessage,
+                onPromote = viewModel::promoteAdminByEmail,
+                onDismissMessage = viewModel::clearActionMessage
+            )
             UserManagementCard(
                 users = state.users,
                 onSetAdmin = { viewModel.setRole(it, AdminPolicy.ROLE_ADMIN) },
@@ -130,6 +143,74 @@ private fun AdminSummary(state: AdminUiState) {
             AdminMetric("Người dùng", state.users.size.toString(), Modifier.weight(1f))
             AdminMetric("Admin", state.adminCount.toString(), Modifier.weight(1f))
             AdminMetric("User", state.standardUserCount.toString(), Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun AdminAccessSummary(state: AdminUiState) {
+    PinkCard(containerColor = CreamWhite) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Icon(Icons.Default.People, contentDescription = null, tint = RoseDeep)
+            Text("Thống kê truy cập", style = MaterialTheme.typography.titleMedium)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            AdminMetric("Truy cập", state.totalAccessCount.toString(), Modifier.weight(1f))
+            AdminMetric("Hôm nay", state.activeTodayCount.toString(), Modifier.weight(1f))
+            AdminMetric("Chưa mở", state.neverAccessedCount.toString(), Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun PromoteAdminCard(
+    message: String?,
+    onPromote: (String) -> Unit,
+    onDismissMessage: () -> Unit
+) {
+    var email by remember { mutableStateOf("") }
+
+    PinkCard(containerColor = CreamWhite) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Icon(Icons.Default.PersonAdd, contentDescription = null, tint = RoseDeep)
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Cấp quyền admin", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Nhập email user đã có tài khoản để chuyển thành admin.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                value = email,
+                onValueChange = { email = it },
+                label = { Text("Email user") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                singleLine = true,
+                modifier = Modifier.weight(1f)
+            )
+            FilledTonalButton(onClick = { onPromote(email) }) {
+                Text("Thêm")
+            }
+        }
+        message?.let {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
+                )
+                TextButton(onClick = onDismissMessage) {
+                    Text("OK")
+                }
+            }
         }
     }
 }
@@ -198,6 +279,11 @@ private fun UserRow(
             Text(user.name.ifBlank { "Chưa có tên" }, style = MaterialTheme.typography.titleSmall)
             Text(user.email.ifBlank { user.uid }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text("Tạo: ${formatCreatedAt(user.createdAtEpochMillis)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                "Truy cập: ${user.accessCount} lần - cuối: ${formatLastAccess(user.lastAccessAtEpochMillis)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             AssistChip(
                 onClick = {},
                 label = { Text(if (isAdmin) "admin" else "user") }
@@ -219,4 +305,8 @@ private fun formatCreatedAt(epochMillis: Long): String {
     return Instant.ofEpochMilli(epochMillis)
         .atZone(ZoneId.systemDefault())
         .format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+}
+
+private fun formatLastAccess(epochMillis: Long?): String {
+    return epochMillis?.let(::formatCreatedAt) ?: "chưa có"
 }

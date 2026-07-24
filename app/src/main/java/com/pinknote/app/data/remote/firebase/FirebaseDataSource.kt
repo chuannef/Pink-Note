@@ -14,6 +14,7 @@ import com.pinknote.app.utils.Constants
 import com.pinknote.app.utils.DateUtils.toStorageString
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.storage.FirebaseStorage
@@ -104,7 +105,7 @@ class FirebaseDataSource @Inject constructor(
     suspend fun saveUser(profile: UserProfile) {
         firestore.collection(Constants.USERS_COLLECTION)
             .document(profile.uid)
-            .set(profile.toFirestoreMap())
+            .set(profile.toFirestoreMap(), SetOptions.merge())
             .await()
     }
 
@@ -148,6 +149,19 @@ class FirebaseDataSource @Inject constructor(
         firestore.collection(Constants.USERS_COLLECTION)
             .document(uid)
             .set(mapOf("role" to AdminPolicy.normalizeRole(role)), SetOptions.merge())
+            .await()
+    }
+
+    suspend fun recordUserAccess(uid: String) {
+        firestore.collection(Constants.USERS_COLLECTION)
+            .document(uid)
+            .set(
+                mapOf(
+                    "accessCount" to FieldValue.increment(1),
+                    "lastAccessAt" to System.currentTimeMillis()
+                ),
+                SetOptions.merge()
+            )
             .await()
     }
 
@@ -235,6 +249,8 @@ class FirebaseDataSource @Inject constructor(
             averageCycleLength = (this["averageCycleLength"] as? Number)?.toInt() ?: Constants.DEFAULT_CYCLE_LENGTH,
             periodLength = (this["periodLength"] as? Number)?.toInt() ?: Constants.DEFAULT_PERIOD_LENGTH,
             role = AdminPolicy.normalizeRole(this["role"] as? String),
+            accessCount = (this["accessCount"] as? Number)?.toLong() ?: 0L,
+            lastAccessAtEpochMillis = (this["lastAccessAt"] as? Number)?.toLong(),
             createdAtEpochMillis = (this["createdAt"] as? Number)?.toLong() ?: System.currentTimeMillis()
         )
     }

@@ -8,4 +8,5 @@ interface UserRepository {
     fun observeUsers(): Flow<List<UserProfile>>
     suspend fun updateProfile(profile: UserProfile)
     suspend fun setUserRole(uid: String, role: String)
+    suspend fun recordAccess(uid: String)
 }

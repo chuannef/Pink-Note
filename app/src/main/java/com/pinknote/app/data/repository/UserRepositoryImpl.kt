@@ -39,4 +39,8 @@ class UserRepositoryImpl @Inject constructor(
             userDao.upsert(cached.copy(role = AdminPolicy.normalizeRole(role)))
         }
     }
+
+    override suspend fun recordAccess(uid: String) {
+        runCatching { firebaseDataSource.recordUserAccess(uid) }
+    }
 }

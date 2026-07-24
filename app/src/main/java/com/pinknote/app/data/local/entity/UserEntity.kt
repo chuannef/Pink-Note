@@ -16,5 +16,7 @@ data class UserEntity(
     val averageCycleLength: Int,
     val periodLength: Int,
     val role: String,
+    val accessCount: Long,
+    val lastAccessAtEpochMillis: Long?,
     val createdAtEpochMillis: Long
 )

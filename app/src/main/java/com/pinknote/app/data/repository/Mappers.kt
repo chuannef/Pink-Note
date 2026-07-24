@@ -25,6 +25,8 @@ fun UserProfile.toEntity() = UserEntity(
     averageCycleLength = averageCycleLength,
     periodLength = periodLength,
     role = role,
+    accessCount = accessCount,
+    lastAccessAtEpochMillis = lastAccessAtEpochMillis,
     createdAtEpochMillis = createdAtEpochMillis
 )
 
@@ -40,6 +42,8 @@ fun UserEntity.toDomain() = UserProfile(
     averageCycleLength = averageCycleLength,
     periodLength = periodLength,
     role = role,
+    accessCount = accessCount,
+    lastAccessAtEpochMillis = lastAccessAtEpochMillis,
     createdAtEpochMillis = createdAtEpochMillis
 )
 

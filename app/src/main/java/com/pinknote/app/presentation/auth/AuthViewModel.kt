@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pinknote.app.domain.model.AppResult
 import com.pinknote.app.domain.repository.AuthRepository
+import com.pinknote.app.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,15 +20,22 @@ data class AuthUiState(
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val userRepository: UserRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
+    private val accessRecordedUids = mutableSetOf<String>()
 
     init {
         viewModelScope.launch {
             authRepository.currentUser.collect { user ->
                 _uiState.value = _uiState.value.copy(isAuthenticated = user != null)
+                if (user != null && accessRecordedUids.add(user.uid)) {
+                    launch { userRepository.recordAccess(user.uid) }
+                } else if (user == null) {
+                    accessRecordedUids.clear()
+                }
             }
         }
     }
