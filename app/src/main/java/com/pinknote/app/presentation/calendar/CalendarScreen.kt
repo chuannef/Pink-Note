@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
@@ -105,8 +104,11 @@ fun CalendarScreen(
         PinkCard {
             Text("Chú thích", style = MaterialTheme.typography.titleMedium)
             LegendRow("Hành kinh", PeriodRed)
-            LegendRow("Rụng trứng", OvulationGreen)
-            LegendRow("Dễ mang thai", FertileYellow)
+            LegendRow("Hành kinh dự kiến", PeriodRed.copy(alpha = 0.55f))
+            LegendRow("Trễ kinh", Color(0xFFB71C1C))
+            LegendRow("Rụng trứng ước tính", OvulationGreen)
+            LegendRow("Cửa sổ thụ thai", FertileYellow)
+            LegendRow("Tiền kinh nguyệt", Color(0xFFCE93D8))
             LegendRow("Ngày bình thường", CalmGray.copy(alpha = 0.5f))
         }
     }
@@ -121,8 +123,11 @@ private fun CalendarDayCell(
 ) {
     val color = when (day.type) {
         CalendarDayType.PERIOD -> PeriodRed
+        CalendarDayType.PREDICTED_PERIOD -> PeriodRed.copy(alpha = 0.55f)
+        CalendarDayType.LATE_PERIOD -> Color(0xFFB71C1C)
         CalendarDayType.OVULATION -> OvulationGreen
         CalendarDayType.FERTILE -> FertileYellow
+        CalendarDayType.PMS -> Color(0xFFCE93D8)
         CalendarDayType.NORMAL -> CalmGray.copy(alpha = 0.28f)
     }
     val borderColor = when {
@@ -144,17 +149,6 @@ private fun CalendarDayCell(
             color = Color(0xFF38232B),
             style = MaterialTheme.typography.bodyMedium
         )
-        if (day.hasLog) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 5.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary)
-                    .height(4.dp)
-                    .fillMaxWidth(0.24f)
-            )
-        }
     }
 }
 

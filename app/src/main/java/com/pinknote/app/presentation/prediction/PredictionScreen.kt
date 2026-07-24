@@ -34,7 +34,7 @@ fun PredictionScreen(viewModel: HomeViewModel = hiltViewModel()) {
     PinkPage {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Dự đoán chu kỳ", style = MaterialTheme.typography.headlineMedium)
-            Text("Các mốc dự đoán dựa trên thiết lập chu kỳ hiện tại của bạn.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Các mốc bên dưới là ước tính, không phải chẩn đoán y khoa.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (prediction == null) {
             PinkCard {
@@ -48,12 +48,13 @@ fun PredictionScreen(viewModel: HomeViewModel = hiltViewModel()) {
             }
             PredictionRow(Icons.Default.CalendarMonth, "Bắt đầu kỳ tiếp theo", prediction.nextPeriodStart.toStorageString())
             PredictionRow(Icons.Default.WaterDrop, "Kết thúc kỳ tiếp theo", prediction.nextPeriodEnd.toStorageString())
-            PredictionRow(Icons.Default.Eco, "Ngày rụng trứng", prediction.ovulationDate.toStorageString())
+            PredictionRow(Icons.Default.Eco, "Rụng trứng ước tính", prediction.ovulationDate.toStorageString())
             PredictionRow(
                 Icons.Default.Favorite,
-                "Khoảng dễ mang thai",
+                "Cửa sổ thụ thai ước tính",
                 "${prediction.fertileStart.toStorageString()} - ${prediction.fertileEnd.toStorageString()}"
             )
+            PredictionRow(Icons.Default.Favorite, "Xác suất thụ thai hôm nay", "${prediction.fertilityTodayPercent}% - ${prediction.fertilityTodayLevel.name.replace('_', ' ')}")
             PredictionRow(Icons.Default.CalendarMonth, "Ngày trong chu kỳ", "Ngày ${prediction.cycleDay}")
         }
     }

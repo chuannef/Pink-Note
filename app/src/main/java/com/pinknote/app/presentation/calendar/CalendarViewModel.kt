@@ -53,7 +53,8 @@ class CalendarViewModel @Inject constructor(
                         settings = settings,
                         monthStart = currentMonth,
                         loggedDates = logs.map { it.date }.toSet(),
-                        periodConfirmations = logs.associate { it.date to it.isPeriodDay }
+                        periodConfirmations = logs.associate { it.date to it.isPeriodDay },
+                        logs = logs
                     )
                 )
             }

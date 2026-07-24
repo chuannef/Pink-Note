@@ -61,7 +61,6 @@ import com.pinknote.app.presentation.statistics.StatisticsUiState
 import com.pinknote.app.presentation.statistics.StatisticsViewModel
 import com.pinknote.app.utils.DateUtils.toStorageString
 import java.time.LocalDate
-import java.time.temporal.ChronoUnit
 
 @Composable
 fun HomeScreen(
@@ -72,12 +71,8 @@ fun HomeScreen(
     val state by viewModel.uiState.collectAsState()
     val statisticsState by statisticsViewModel.uiState.collectAsState()
     val prediction = state.prediction
-    val rawProgress = prediction?.let {
-        val distance = ChronoUnit.DAYS.between(LocalDate.now(), it.nextPeriodStart).toFloat()
-        1f - (distance / state.cycleSettings.cycleLength).coerceIn(0f, 1f)
-    } ?: 0f
     val progress by animateFloatAsState(
-        targetValue = rawProgress,
+        targetValue = prediction?.cycleProgress ?: 0f,
         animationSpec = spring(dampingRatio = 0.82f, stiffness = 90f),
         label = "cycle-progress"
     )
@@ -107,6 +102,20 @@ fun HomeScreen(
                     prediction?.ovulationDate?.toStorageString().orEmpty(),
                     modifier = Modifier.weight(1f),
                     supporting = "Theo chu kỳ"
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                PinkMetric(
+                    "Ngày chu kỳ",
+                    prediction?.cycleDay?.toString().orEmpty(),
+                    modifier = Modifier.weight(1f),
+                    supporting = "Hiện tại"
+                )
+                PinkMetric(
+                    "Thụ thai hôm nay",
+                    prediction?.let { "${it.fertilityTodayPercent}%" }.orEmpty(),
+                    modifier = Modifier.weight(1f),
+                    supporting = prediction?.fertilityTodayLevel?.name?.replace('_', ' ').orEmpty()
                 )
             }
             TipCard()

@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
@@ -23,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pinknote.app.domain.model.AppLanguage
 import com.pinknote.app.domain.model.ThemeMode
+import com.pinknote.app.presentation.common.PinkCard
+import com.pinknote.app.utils.Constants
 
 @Composable
 fun SettingsScreen(
@@ -42,7 +46,13 @@ fun SettingsScreen(
         }
     }
 
-    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
+    ) {
         Text("Cài đặt", style = MaterialTheme.typography.headlineMedium)
         Text("Giao diện", style = MaterialTheme.typography.titleMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -73,6 +83,7 @@ fun SettingsScreen(
                 Text("Quản trị ứng dụng")
             }
         }
+        AboutPinkNoteCard()
         Button(onClick = viewModel::sendChangePasswordEmail, modifier = Modifier.fillMaxWidth()) {
             Text("Gửi email đổi mật khẩu")
         }
@@ -90,5 +101,30 @@ fun SettingsScreen(
         Button(onClick = viewModel::deleteAccount, modifier = Modifier.fillMaxWidth()) {
             Text("Xóa tài khoản")
         }
+    }
+}
+
+@Composable
+private fun AboutPinkNoteCard() {
+    PinkCard {
+        Text("About PinkNote", style = MaterialTheme.typography.titleMedium)
+        Text("Version: ${Constants.APP_VERSION}", style = MaterialTheme.typography.bodyMedium)
+        Text("Developer: ${Constants.DEVELOPER_NAME}", style = MaterialTheme.typography.bodyMedium)
+        Text("Contact: ${Constants.SUPPORT_EMAIL}", style = MaterialTheme.typography.bodyMedium)
+        Text(Constants.PRIVACY_POLICY, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            "Open-source libraries: Kotlin, Jetpack Compose, Hilt, Room, Firebase, WorkManager, MPAndroidChart.",
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Text("Medical Disclaimer", style = MaterialTheme.typography.titleSmall)
+        Text(
+            "This application is intended for educational and personal health tracking purposes only.\n\n" +
+                "It does not provide medical diagnosis, treatment, or professional medical advice.\n\n" +
+                "Predictions of menstruation, ovulation, and fertility are estimates based on user-entered data and statistical models.\n\n" +
+                "The application should not be used as a method of contraception or pregnancy planning.\n\n" +
+                "Please consult a qualified healthcare professional for any medical concerns.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }

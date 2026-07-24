@@ -2,7 +2,9 @@ package com.pinknote.app.domain.usecase
 
 import com.pinknote.app.domain.model.CalendarDayType
 import com.pinknote.app.domain.model.CycleSettings
+import com.pinknote.app.domain.model.PredictionConfidence
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
 
@@ -23,6 +25,7 @@ class PredictCycleUseCaseTest {
         assertEquals(CalendarDayType.PERIOD, prediction.todayType)
         assertEquals("Hôm nay là ngày thứ 3 của kỳ kinh", prediction.countdownText)
         assertEquals(LocalDate.of(2026, 7, 29), prediction.nextPeriodStart)
+        assertEquals(PredictionConfidence.VERY_LOW, prediction.confidence)
     }
 
     @Test
@@ -38,6 +41,23 @@ class PredictCycleUseCaseTest {
 
         assertEquals(CalendarDayType.OVULATION, prediction.todayType)
         assertEquals(LocalDate.of(2026, 7, 15), prediction.ovulationDate)
+    }
+
+    @Test
+    fun `late period does not automatically create a new cycle`() {
+        val prediction = useCase(
+            settings = CycleSettings(
+                lastPeriodStart = LocalDate.of(2026, 7, 1),
+                cycleLength = 28,
+                periodLength = 5
+            ),
+            today = LocalDate.of(2026, 7, 31)
+        )
+
+        assertEquals(LocalDate.of(2026, 7, 29), prediction.nextPeriodStart)
+        assertEquals(CalendarDayType.LATE_PERIOD, prediction.todayType)
+        assertEquals(2, prediction.lateDays)
+        assertTrue(prediction.isLate)
     }
 
     @Test

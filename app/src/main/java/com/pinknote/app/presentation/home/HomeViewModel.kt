@@ -43,7 +43,11 @@ class HomeViewModel @Inject constructor(
         if (user == null) {
             flowOf(HomeUiState(isEmpty = true))
         } else {
-            cycleRepository.observeCycle(user.uid).combine(flowOf(user)) { cycle, currentUser ->
+            combine(
+                cycleRepository.observeCycle(user.uid),
+                cycleRepository.observeDailyLogs(user.uid),
+                flowOf(user)
+            ) { cycle, logs, currentUser ->
                 val settings = cycle ?: CycleSettings(
                     uid = currentUser.uid,
                     lastPeriodStart = LocalDate.now(),
@@ -53,7 +57,7 @@ class HomeViewModel @Inject constructor(
                 HomeUiState(
                     user = currentUser,
                     cycleSettings = settings,
-                    prediction = predictCycleUseCase(settings),
+                    prediction = predictCycleUseCase(settings, logs = logs),
                     isEmpty = cycle == null
                 )
             }
