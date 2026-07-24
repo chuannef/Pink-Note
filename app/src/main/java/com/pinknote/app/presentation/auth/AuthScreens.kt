@@ -3,26 +3,46 @@ package com.pinknote.app.presentation.auth
 import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -34,7 +54,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -43,9 +68,12 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.pinknote.app.R
-import com.pinknote.app.presentation.common.PinkCard
 import com.pinknote.app.presentation.common.PinkPage
 import com.pinknote.app.presentation.common.PinkPrimaryButton
+import com.pinknote.app.presentation.theme.BlushSurface
+import com.pinknote.app.presentation.theme.CreamWhite
+import com.pinknote.app.presentation.theme.PastelPink
+import com.pinknote.app.presentation.theme.RoseDeep
 
 @Composable
 fun LoginScreen(
@@ -83,8 +111,8 @@ fun LoginScreen(
     }
 
     AuthFormScaffold(
-        title = "PinkNote",
-        subtitle = "Theo dõi chu kỳ với cảm giác nhẹ nhàng, riêng tư và dễ tin cậy."
+        title = "Chào mừng trở lại",
+        subtitle = "Tiếp tục theo dõi chu kỳ, nhật ký sức khỏe và các nhắc nhở quan trọng của bạn."
     ) {
         PinkTextField(
             value = email,
@@ -113,20 +141,19 @@ fun LoginScreen(
             },
             enabled = !uiState.isLoading
         ) {
-            Text("Đăng nhập")
+            Text("Đăng nhập", fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.width(8.dp))
+            Icon(Icons.Default.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
         }
-        OutlinedButton(
+        GoogleAuthButton(
+            text = "Đăng nhập bằng Google",
+            enabled = !uiState.isLoading,
             onClick = {
                 googleClient.signOut().addOnCompleteListener {
                     launcher.launch(googleClient.signInIntent)
                 }
-            },
-            enabled = !uiState.isLoading,
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.large
-        ) {
-            Text("Đăng nhập bằng Google")
-        }
+            }
+        )
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -164,7 +191,7 @@ fun RegisterScreen(
 
     AuthFormScaffold(
         title = "Tạo tài khoản",
-        subtitle = "Bắt đầu bằng vài thông tin cơ bản, phần còn lại có thể cập nhật sau."
+        subtitle = "Bắt đầu hồ sơ Pink Note để dự đoán chu kỳ và lưu nhật ký cá nhân mỗi ngày."
     ) {
         PinkTextField(
             value = name,
@@ -205,9 +232,14 @@ fun RegisterScreen(
             },
             enabled = !uiState.isLoading
         ) {
-            Text("Đăng ký")
+            Text("Đăng ký", fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.width(8.dp))
+            Icon(Icons.Default.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
         }
-        TextButton(onClick = onLogin) {
+        TextButton(
+            onClick = onLogin,
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        ) {
             Text("Đã có tài khoản")
         }
         AuthStatus(
@@ -224,19 +256,195 @@ private fun AuthFormScaffold(
     content: @Composable ColumnScope.() -> Unit
 ) {
     PinkPage {
-        Spacer(Modifier.height(52.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Icon(Icons.Default.Favorite, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Text("PinkNote", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            AuthHero(title = title, subtitle = subtitle)
+            Spacer(Modifier.height(18.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(32.dp),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.48f)),
+                shadowElevation = 12.dp
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    content = content
+                )
             }
-            Text(title, style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.primary)
-            Text(subtitle, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(18.dp))
         }
-        Spacer(Modifier.height(10.dp))
-        PinkCard {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+    }
+}
+
+@Composable
+private fun AuthHero(title: String, subtitle: String) {
+    val transition = rememberInfiniteTransition(label = "auth_hero_motion")
+    val iconScale by transition.animateFloat(
+        initialValue = 0.96f,
+        targetValue = 1.04f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1800),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "auth_icon_scale"
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 28.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .graphicsLayer {
+                        scaleX = iconScale
+                        scaleY = iconScale
+                    }
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(PastelPink, RoseDeep)
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Favorite,
+                    contentDescription = null,
+                    tint = CreamWhite,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Column {
+                Text(
+                    text = "Pink Note",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "Nhật ký chu kỳ cá nhân",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
+
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.displaySmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            AuthFeatureChip(
+                text = "Riêng tư",
+                icon = { Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                modifier = Modifier.weight(1f)
+            )
+            AuthFeatureChip(
+                text = "Dễ theo dõi",
+                icon = { Icon(Icons.Default.Favorite, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                modifier = Modifier.weight(1f)
+            )
+            AuthFeatureChip(
+                text = "Cá nhân",
+                icon = { Icon(Icons.Default.AccountCircle, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun AuthFeatureChip(
+    text: String,
+    icon: @Composable () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.height(42.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = BlushSurface.copy(alpha = 0.82f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.36f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier.size(18.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                icon()
+            }
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+private fun GoogleAuthButton(
+    text: String,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    OutlinedButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(52.dp),
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.72f)),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .size(26.dp)
+                .clip(CircleShape)
+                .background(CreamWhite),
+            contentAlignment = Alignment.Center
+        ) {
+            Image(
+                painter = painterResource(R.drawable.ic_google_logo),
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        Spacer(Modifier.width(10.dp))
+        Text(text, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -257,12 +465,17 @@ private fun PinkTextField(
         leadingIcon = leadingIcon,
         keyboardOptions = keyboardOptions,
         visualTransformation = visualTransformation,
-        shape = MaterialTheme.shapes.large,
+        singleLine = true,
+        shape = RoundedCornerShape(20.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.72f),
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.62f),
             focusedContainerColor = MaterialTheme.colorScheme.surface,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surface
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.46f),
+            focusedLeadingIconColor = MaterialTheme.colorScheme.primary,
+            unfocusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            focusedLabelColor = MaterialTheme.colorScheme.primary,
+            unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
         ),
         modifier = modifier.fillMaxWidth()
     )
@@ -271,15 +484,37 @@ private fun PinkTextField(
 @Composable
 private fun AuthStatus(isLoading: Boolean, message: String?) {
     if (isLoading) {
-        CircularProgressIndicator(Modifier.padding(top = 8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(22.dp),
+                strokeWidth = 2.dp
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(
+                text = "Đang xử lý",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
     message?.let {
-        Text(
-            text = it,
-            color = MaterialTheme.colorScheme.error,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(top = 4.dp)
-        )
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.error.copy(alpha = 0.08f),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.2f))
+        ) {
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
+            )
+        }
     }
 }
 
