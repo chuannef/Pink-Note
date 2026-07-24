@@ -1,0 +1,47 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
+    }
+
+    function roleUnchanged() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(["role"]);
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId)
+        && (!("role" in request.resource.data) || request.resource.data.role == "user");
+      allow update: if isAdmin() || (isOwner(userId) && roleUnchanged());
+      allow delete: if isAdmin() || isOwner(userId);
+    }
+
+    match /cycle/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    match /daily_logs/{userId}/days/{dayId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    match /notifications/{userId}/items/{notificationId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    match /settings/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+  }
+}

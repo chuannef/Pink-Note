@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+
 package com.pinknote.app.presentation.settings
 
 import androidx.lifecycle.ViewModel
@@ -7,9 +9,13 @@ import com.pinknote.app.domain.model.AppSettings
 import com.pinknote.app.domain.model.ThemeMode
 import com.pinknote.app.domain.repository.AuthRepository
 import com.pinknote.app.domain.repository.SettingsRepository
+import com.pinknote.app.domain.repository.UserRepository
+import com.pinknote.app.utils.AdminPolicy
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -18,7 +24,8 @@ import javax.inject.Inject
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val authRepository: AuthRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    userRepository: UserRepository
 ) : ViewModel() {
     val settings: StateFlow<AppSettings> = settingsRepository.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettings())
@@ -26,6 +33,16 @@ class SettingsViewModel @Inject constructor(
     val currentEmail: StateFlow<String> = authRepository.currentUser
         .map { it?.email.orEmpty() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
+
+    val isAdmin: StateFlow<Boolean> = authRepository.currentUser
+        .flatMapLatest { user ->
+            user?.uid?.let { uid ->
+                userRepository.observeProfile(uid).map { profile ->
+                    AdminPolicy.isAdmin(profile?.role ?: user.role)
+                }
+            } ?: flowOf(false)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     fun setTheme(themeMode: ThemeMode) {
         save(settings.value.copy(themeMode = themeMode))

@@ -26,6 +26,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.pinknote.app.presentation.admin.AdminScreen
 import com.pinknote.app.presentation.auth.LoginScreen
 import com.pinknote.app.presentation.auth.RegisterScreen
 import com.pinknote.app.presentation.auth.SplashScreen
@@ -154,7 +155,10 @@ fun PinkNoteNavHost(navController: NavHostController = rememberNavController()) 
                 ProfileScreen(onEditProfile = { navController.navigate(AppRoute.EditProfile.route) })
             }
             composable(AppRoute.Settings.route) {
-                SettingsScreen()
+                SettingsScreen(onOpenAdmin = { navController.navigate(AppRoute.Admin.route) })
+            }
+            composable(AppRoute.Admin.route) {
+                AdminScreen(onBack = { navController.popBackStack() })
             }
             composable(AppRoute.EditProfile.route) {
                 EditProfileScreen(onSaved = { navController.popBackStack() })

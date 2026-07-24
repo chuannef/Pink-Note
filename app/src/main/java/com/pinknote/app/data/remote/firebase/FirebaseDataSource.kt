@@ -5,12 +5,17 @@ import com.pinknote.app.domain.model.CycleSettings
 import com.pinknote.app.domain.model.DailyLog
 import com.pinknote.app.domain.model.Reminder
 import com.pinknote.app.domain.model.UserProfile
+import com.pinknote.app.utils.AdminPolicy
 import com.pinknote.app.utils.Constants
 import com.pinknote.app.utils.DateUtils.toStorageString
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -88,7 +93,45 @@ class FirebaseDataSource @Inject constructor(
 
     suspend fun getUser(uid: String): UserProfile? {
         val snapshot = firestore.collection(Constants.USERS_COLLECTION).document(uid).get().await()
-        return snapshot.data?.toUserProfile(uid)
+        val data = snapshot.data ?: return null
+        if (!data.containsKey("role")) {
+            setUserRole(uid, AdminPolicy.ROLE_USER)
+        }
+        return data.toUserProfile(uid)
+    }
+
+    fun observeUsers(): Flow<List<UserProfile>> = callbackFlow {
+        val registration = firestore.collection(Constants.USERS_COLLECTION)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+
+                val users = snapshot?.documents
+                    ?.mapNotNull { document ->
+                        val data = document.data ?: return@mapNotNull null
+                        if (!data.containsKey("role")) {
+                            document.reference.set(
+                                mapOf("role" to AdminPolicy.ROLE_USER),
+                                SetOptions.merge()
+                            )
+                        }
+                        data.toUserProfile(document.id)
+                    }
+                    ?.sortedByDescending { it.createdAtEpochMillis }
+                    .orEmpty()
+                trySend(users)
+            }
+
+        awaitClose { registration.remove() }
+    }
+
+    suspend fun setUserRole(uid: String, role: String) {
+        firestore.collection(Constants.USERS_COLLECTION)
+            .document(uid)
+            .set(mapOf("role" to AdminPolicy.normalizeRole(role)), SetOptions.merge())
+            .await()
     }
 
     suspend fun saveCycle(settings: CycleSettings) {
@@ -127,6 +170,7 @@ class FirebaseDataSource @Inject constructor(
         "healthGoal" to healthGoal,
         "averageCycleLength" to averageCycleLength,
         "periodLength" to periodLength,
+        "role" to role,
         "createdAt" to createdAtEpochMillis
     )
 
@@ -173,6 +217,7 @@ class FirebaseDataSource @Inject constructor(
             healthGoal = this["healthGoal"] as? String ?: "",
             averageCycleLength = (this["averageCycleLength"] as? Number)?.toInt() ?: Constants.DEFAULT_CYCLE_LENGTH,
             periodLength = (this["periodLength"] as? Number)?.toInt() ?: Constants.DEFAULT_PERIOD_LENGTH,
+            role = AdminPolicy.normalizeRole(this["role"] as? String),
             createdAtEpochMillis = (this["createdAt"] as? Number)?.toLong() ?: System.currentTimeMillis()
         )
     }

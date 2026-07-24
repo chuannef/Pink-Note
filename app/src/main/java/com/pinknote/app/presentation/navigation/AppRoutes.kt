@@ -13,5 +13,6 @@ sealed class AppRoute(val route: String) {
     data object Reminder : AppRoute("reminder")
     data object Profile : AppRoute("profile")
     data object Settings : AppRoute("settings")
+    data object Admin : AppRoute("admin")
     data object EditProfile : AppRoute("edit_profile")
 }

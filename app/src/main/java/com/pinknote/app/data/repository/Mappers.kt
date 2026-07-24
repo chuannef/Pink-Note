@@ -24,6 +24,7 @@ fun UserProfile.toEntity() = UserEntity(
     healthGoal = healthGoal,
     averageCycleLength = averageCycleLength,
     periodLength = periodLength,
+    role = role,
     createdAtEpochMillis = createdAtEpochMillis
 )
 
@@ -38,6 +39,7 @@ fun UserEntity.toDomain() = UserProfile(
     healthGoal = healthGoal,
     averageCycleLength = averageCycleLength,
     periodLength = periodLength,
+    role = role,
     createdAtEpochMillis = createdAtEpochMillis
 )
 

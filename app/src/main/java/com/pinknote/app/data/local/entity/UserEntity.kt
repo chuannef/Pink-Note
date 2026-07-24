@@ -15,5 +15,6 @@ data class UserEntity(
     val healthGoal: String,
     val averageCycleLength: Int,
     val periodLength: Int,
+    val role: String,
     val createdAtEpochMillis: Long
 )

@@ -13,5 +13,6 @@ data class UserProfile(
     val healthGoal: String = "",
     val averageCycleLength: Int = 28,
     val periodLength: Int = 5,
+    val role: String = "user",
     val createdAtEpochMillis: Long = System.currentTimeMillis()
 )

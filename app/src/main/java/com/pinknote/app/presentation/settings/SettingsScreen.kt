@@ -22,8 +22,12 @@ import com.pinknote.app.domain.model.AppLanguage
 import com.pinknote.app.domain.model.ThemeMode
 
 @Composable
-fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(
+    onOpenAdmin: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel()
+) {
     val settings by viewModel.settings.collectAsState()
+    val isAdmin by viewModel.isAdmin.collectAsState()
 
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
         Text("Cài đặt", style = MaterialTheme.typography.headlineMedium)
@@ -50,6 +54,11 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
             Text("Thông báo")
             Switch(checked = settings.notificationsEnabled, onCheckedChange = viewModel::setNotificationsEnabled)
+        }
+        if (isAdmin) {
+            Button(onClick = onOpenAdmin, modifier = Modifier.fillMaxWidth()) {
+                Text("Quản trị ứng dụng")
+            }
         }
         Button(onClick = viewModel::sendChangePasswordEmail, modifier = Modifier.fillMaxWidth()) {
             Text("Gửi email đổi mật khẩu")

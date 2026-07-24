@@ -11,6 +11,12 @@ interface UserDao {
     @Query("SELECT * FROM users WHERE uid = :uid LIMIT 1")
     fun observeByUid(uid: String): Flow<UserEntity?>
 
+    @Query("SELECT * FROM users WHERE uid = :uid LIMIT 1")
+    suspend fun getByUid(uid: String): UserEntity?
+
+    @Query("SELECT * FROM users ORDER BY createdAtEpochMillis DESC")
+    fun observeAll(): Flow<List<UserEntity>>
+
     @Upsert
     suspend fun upsert(user: UserEntity)
 }
