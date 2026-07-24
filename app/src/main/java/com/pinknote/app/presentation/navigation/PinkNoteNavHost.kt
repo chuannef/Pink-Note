@@ -155,7 +155,17 @@ fun PinkNoteNavHost(navController: NavHostController = rememberNavController()) 
                 ProfileScreen(onEditProfile = { navController.navigate(AppRoute.EditProfile.route) })
             }
             composable(AppRoute.Settings.route) {
-                SettingsScreen(onOpenAdmin = { navController.navigate(AppRoute.Admin.route) })
+                SettingsScreen(
+                    onOpenAdmin = { navController.navigate(AppRoute.Admin.route) },
+                    onLoggedOut = {
+                        navController.navigate(AppRoute.Login.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                inclusive = true
+                            }
+                            launchSingleTop = true
+                        }
+                    }
+                )
             }
             composable(AppRoute.Admin.route) {
                 AdminScreen(onBack = { navController.popBackStack() })

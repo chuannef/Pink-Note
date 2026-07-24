@@ -2,7 +2,6 @@ package com.pinknote.app.presentation.profile
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -40,13 +39,8 @@ fun ProfileScreen(
                 Text("Số ngày hành kinh: ${profile?.periodLength ?: 5} ngày")
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = onEditProfile, modifier = Modifier.weight(1f)) {
-                Text("Chỉnh sửa")
-            }
-            Button(onClick = viewModel::logout, modifier = Modifier.weight(1f)) {
-                Text("Đăng xuất")
-            }
+        Button(onClick = onEditProfile, modifier = Modifier.fillMaxWidth()) {
+            Text("Chỉnh sửa")
         }
     }
 }

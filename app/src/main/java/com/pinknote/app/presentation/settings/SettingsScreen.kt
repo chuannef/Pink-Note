@@ -6,12 +6,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -24,10 +27,20 @@ import com.pinknote.app.domain.model.ThemeMode
 @Composable
 fun SettingsScreen(
     onOpenAdmin: () -> Unit,
+    onLoggedOut: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val settings by viewModel.settings.collectAsState()
     val isAdmin by viewModel.isAdmin.collectAsState()
+    val isLoggingOut by viewModel.isLoggingOut.collectAsState()
+    val logoutCompleted by viewModel.logoutCompleted.collectAsState()
+
+    LaunchedEffect(logoutCompleted) {
+        if (logoutCompleted) {
+            viewModel.consumeLogoutNavigation()
+            onLoggedOut()
+        }
+    }
 
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
         Text("Cài đặt", style = MaterialTheme.typography.headlineMedium)
@@ -63,8 +76,16 @@ fun SettingsScreen(
         Button(onClick = viewModel::sendChangePasswordEmail, modifier = Modifier.fillMaxWidth()) {
             Text("Gửi email đổi mật khẩu")
         }
-        Button(onClick = viewModel::logout, modifier = Modifier.fillMaxWidth()) {
-            Text("Đăng xuất")
+        Button(
+            onClick = viewModel::logout,
+            enabled = !isLoggingOut,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            if (isLoggingOut) {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+            } else {
+                Text("Đăng xuất")
+            }
         }
         Button(onClick = viewModel::deleteAccount, modifier = Modifier.fillMaxWidth()) {
             Text("Xóa tài khoản")

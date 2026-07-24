@@ -1,10 +1,14 @@
 package com.pinknote.app.data.remote.firebase
 
+import android.content.Context
 import android.net.Uri
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.pinknote.app.domain.model.CycleSettings
 import com.pinknote.app.domain.model.DailyLog
 import com.pinknote.app.domain.model.Reminder
 import com.pinknote.app.domain.model.UserProfile
+import com.pinknote.app.R
 import com.pinknote.app.utils.AdminPolicy
 import com.pinknote.app.utils.Constants
 import com.pinknote.app.utils.DateUtils.toStorageString
@@ -21,13 +25,25 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
+import dagger.hilt.android.qualifiers.ApplicationContext
 
 @Singleton
 class FirebaseDataSource @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val auth: FirebaseAuth,
     private val firestore: FirebaseFirestore,
     private val storage: FirebaseStorage
 ) {
+    private val googleSignInClient by lazy {
+        GoogleSignIn.getClient(
+            context,
+            GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestEmail()
+                .requestIdToken(context.getString(R.string.google_web_client_id))
+                .build()
+        )
+    }
+
     fun currentUid(): String? = auth.currentUser?.uid
 
     suspend fun registerWithEmail(name: String, email: String, password: String): UserProfile {
@@ -70,8 +86,9 @@ class FirebaseDataSource @Inject constructor(
         auth.sendPasswordResetEmail(email).await()
     }
 
-    fun logout() {
+    suspend fun logout() {
         auth.signOut()
+        runCatching { googleSignInClient.signOut().await() }
     }
 
     suspend fun deleteAccount() {

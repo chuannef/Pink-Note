@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import com.pinknote.app.R
 import com.pinknote.app.presentation.common.PinkCard
 import com.pinknote.app.presentation.common.PinkPage
@@ -68,7 +69,11 @@ fun LoginScreen(
     }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            val token = GoogleSignIn.getSignedInAccountFromIntent(result.data).result.idToken
+            val token = runCatching {
+                GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                    .getResult(ApiException::class.java)
+                    .idToken
+            }.getOrNull()
             token?.let(viewModel::loginWithGoogle)
         }
     }
@@ -111,7 +116,12 @@ fun LoginScreen(
             Text("Đăng nhập")
         }
         OutlinedButton(
-            onClick = { launcher.launch(googleClient.signInIntent) },
+            onClick = {
+                googleClient.signOut().addOnCompleteListener {
+                    launcher.launch(googleClient.signInIntent)
+                }
+            },
+            enabled = !uiState.isLoading,
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.large
         ) {

@@ -12,8 +12,10 @@ import com.pinknote.app.domain.repository.SettingsRepository
 import com.pinknote.app.domain.repository.UserRepository
 import com.pinknote.app.utils.AdminPolicy
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -27,6 +29,12 @@ class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     userRepository: UserRepository
 ) : ViewModel() {
+    private val _isLoggingOut = MutableStateFlow(false)
+    val isLoggingOut: StateFlow<Boolean> = _isLoggingOut.asStateFlow()
+
+    private val _logoutCompleted = MutableStateFlow(false)
+    val logoutCompleted: StateFlow<Boolean> = _logoutCompleted.asStateFlow()
+
     val settings: StateFlow<AppSettings> = settingsRepository.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettings())
 
@@ -57,7 +65,18 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun logout() {
-        viewModelScope.launch { authRepository.logout() }
+        if (_isLoggingOut.value) return
+
+        viewModelScope.launch {
+            _isLoggingOut.value = true
+            authRepository.logout()
+            _isLoggingOut.value = false
+            _logoutCompleted.value = true
+        }
+    }
+
+    fun consumeLogoutNavigation() {
+        _logoutCompleted.value = false
     }
 
     fun sendChangePasswordEmail() {
