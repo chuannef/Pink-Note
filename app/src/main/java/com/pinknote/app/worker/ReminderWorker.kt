@@ -31,7 +31,7 @@ class ReminderWorker @AssistedInject constructor(
         val id = inputData.getString(KEY_REMINDER_ID).orEmpty().hashCode()
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle(title.ifBlank { "PinkNote" })
+            .setContentTitle(title.ifBlank { "Pink Note" })
             .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)

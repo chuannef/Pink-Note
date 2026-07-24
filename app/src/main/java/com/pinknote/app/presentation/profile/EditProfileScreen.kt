@@ -77,8 +77,8 @@ fun EditProfileScreen(
         }
         OutlinedTextField(value = goal, onValueChange = { goal = it }, label = { Text("Mục tiêu sức khỏe") }, modifier = Modifier.fillMaxWidth())
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(value = cycleLength, onValueChange = { cycleLength = it }, label = { Text("Chu kỳ TB") }, modifier = Modifier.weight(1f))
-            OutlinedTextField(value = periodLength, onValueChange = { periodLength = it }, label = { Text("Hành kinh") }, modifier = Modifier.weight(1f))
+            OutlinedTextField(value = cycleLength, onValueChange = { cycleLength = it }, label = { Text("Chu kỳ trung bình") }, modifier = Modifier.weight(1f))
+            OutlinedTextField(value = periodLength, onValueChange = { periodLength = it }, label = { Text("Số Ngày Hành kinh") }, modifier = Modifier.weight(1f))
         }
         Button(
             onClick = {
