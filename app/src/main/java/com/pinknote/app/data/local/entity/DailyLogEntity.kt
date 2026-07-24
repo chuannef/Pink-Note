@@ -10,6 +10,7 @@ data class DailyLogEntity(
     val mood: String,
     val bodyTemperature: Float?,
     val weightKg: Float?,
+    val isPeriodDay: Boolean?,
     val symptoms: String,
     val discharge: String,
     val medicines: String,

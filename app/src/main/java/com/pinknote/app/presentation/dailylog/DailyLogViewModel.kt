@@ -8,9 +8,12 @@ import com.pinknote.app.domain.model.DailyLog
 import com.pinknote.app.domain.repository.AuthRepository
 import com.pinknote.app.domain.repository.CycleRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
@@ -25,6 +28,8 @@ class DailyLogViewModel @Inject constructor(
 ) : ViewModel() {
     private val selectedDate = MutableStateFlow(LocalDate.now())
     private var currentUid: String? = null
+    private val _saveEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val saveEvents: SharedFlow<Unit> = _saveEvents.asSharedFlow()
 
     val log: StateFlow<DailyLog?> = authRepository.currentUser.flatMapLatest { user ->
         currentUid = user?.uid
@@ -41,6 +46,7 @@ class DailyLogViewModel @Inject constructor(
         mood: String,
         bodyTemperature: Float?,
         weightKg: Float?,
+        isPeriodDay: Boolean?,
         symptoms: List<String>,
         discharge: String,
         medicines: String,
@@ -57,6 +63,7 @@ class DailyLogViewModel @Inject constructor(
                     mood = mood,
                     bodyTemperature = bodyTemperature,
                     weightKg = weightKg,
+                    isPeriodDay = isPeriodDay,
                     symptoms = symptoms,
                     discharge = discharge,
                     medicines = medicines,
@@ -64,6 +71,7 @@ class DailyLogViewModel @Inject constructor(
                     note = note
                 )
             )
+            _saveEvents.emit(Unit)
         }
     }
 }

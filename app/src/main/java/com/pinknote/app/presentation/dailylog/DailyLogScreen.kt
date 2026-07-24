@@ -42,6 +42,7 @@ import java.time.LocalDate
 @Composable
 fun DailyLogScreen(
     dateText: String,
+    onSaved: () -> Unit,
     viewModel: DailyLogViewModel = hiltViewModel()
 ) {
     val date = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }
@@ -50,6 +51,7 @@ fun DailyLogScreen(
     var mood by remember { mutableStateOf("") }
     var temperature by remember { mutableStateOf("") }
     var weight by remember { mutableStateOf("") }
+    var isPeriodDay by remember { mutableStateOf<Boolean?>(null) }
     var discharge by remember { mutableStateOf("") }
     var medicines by remember { mutableStateOf("") }
     var hadSex by remember { mutableStateOf(false) }
@@ -59,14 +61,31 @@ fun DailyLogScreen(
 
     LaunchedEffect(date) {
         viewModel.setDate(date)
+        pain = 0f
+        mood = ""
+        temperature = ""
+        weight = ""
+        isPeriodDay = null
+        discharge = ""
+        medicines = ""
+        hadSex = false
+        note = ""
+        selectedSymptoms = emptySet()
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.saveEvents.collect {
+            onSaved()
+        }
     }
 
     LaunchedEffect(savedLog) {
-        savedLog?.let {
+        savedLog?.takeIf { it.date == date }?.let {
             pain = it.painLevel.toFloat()
             mood = it.mood
             temperature = it.bodyTemperature?.toString().orEmpty()
             weight = it.weightKg?.toString().orEmpty()
+            isPeriodDay = it.isPeriodDay
             discharge = it.discharge
             medicines = it.medicines
             hadSex = it.hadSex
@@ -92,6 +111,10 @@ fun DailyLogScreen(
                 Slider(value = pain, onValueChange = { pain = it }, valueRange = 0f..10f, steps = 9)
                 PinkField(value = mood, onValueChange = { mood = it }, label = "Tâm trạng")
             }
+            PeriodConfirmationCard(
+                value = isPeriodDay,
+                onValueChange = { isPeriodDay = it }
+            )
             PinkCard {
                 Text("Chỉ số cơ thể", style = MaterialTheme.typography.titleMedium)
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
@@ -146,6 +169,7 @@ fun DailyLogScreen(
                             mood = mood,
                             bodyTemperature = temperature.toFloatOrNull(),
                             weightKg = weight.toFloatOrNull(),
+                            isPeriodDay = isPeriodDay,
                             symptoms = selectedSymptoms.toList(),
                             discharge = discharge,
                             medicines = medicines,
@@ -157,6 +181,33 @@ fun DailyLogScreen(
                     Text("Lưu ghi chú")
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun PeriodConfirmationCard(
+    value: Boolean?,
+    onValueChange: (Boolean?) -> Unit
+) {
+    PinkCard {
+        Text("Xác nhận hành kinh", style = MaterialTheme.typography.titleMedium)
+        Text(
+            "Chọn trạng thái thực tế để lịch ưu tiên dữ liệu bạn xác nhận thay vì chỉ dùng dự đoán.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            FilterChip(
+                selected = value == true,
+                onClick = { onValueChange(if (value == true) null else true) },
+                label = { Text("Có hành kinh") }
+            )
+            FilterChip(
+                selected = value == false,
+                onClick = { onValueChange(if (value == false) null else false) },
+                label = { Text("Không hành kinh") }
+            )
         }
     }
 }

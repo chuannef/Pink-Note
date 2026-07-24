@@ -39,4 +39,24 @@ class PredictCycleUseCaseTest {
         assertEquals(CalendarDayType.OVULATION, prediction.todayType)
         assertEquals(LocalDate.of(2026, 7, 15), prediction.ovulationDate)
     }
+
+    @Test
+    fun `calendar uses confirmed period days before predictions`() {
+        val days = useCase.buildCalendarDays(
+            settings = CycleSettings(
+                lastPeriodStart = LocalDate.of(2026, 7, 1),
+                cycleLength = 28,
+                periodLength = 5
+            ),
+            monthStart = LocalDate.of(2026, 7, 1),
+            loggedDates = setOf(LocalDate.of(2026, 7, 2), LocalDate.of(2026, 7, 15)),
+            periodConfirmations = mapOf(
+                LocalDate.of(2026, 7, 2) to false,
+                LocalDate.of(2026, 7, 15) to true
+            )
+        )
+
+        assertEquals(CalendarDayType.NORMAL, days.first { it.date == LocalDate.of(2026, 7, 2) }.type)
+        assertEquals(CalendarDayType.PERIOD, days.first { it.date == LocalDate.of(2026, 7, 15) }.type)
+    }
 }

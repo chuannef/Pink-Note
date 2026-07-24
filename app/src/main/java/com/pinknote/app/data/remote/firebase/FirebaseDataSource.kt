@@ -209,6 +209,7 @@ class FirebaseDataSource @Inject constructor(
         "pain" to painLevel,
         "temperature" to bodyTemperature,
         "weight" to weightKg,
+        "isPeriodDay" to isPeriodDay,
         "symptom" to symptoms,
         "discharge" to discharge,
         "medicine" to medicines,

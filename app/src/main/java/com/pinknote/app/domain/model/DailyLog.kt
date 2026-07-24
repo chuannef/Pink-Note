@@ -9,6 +9,7 @@ data class DailyLog(
     val mood: String = "",
     val bodyTemperature: Float? = null,
     val weightKg: Float? = null,
+    val isPeriodDay: Boolean? = null,
     val symptoms: List<String> = emptyList(),
     val discharge: String = "",
     val medicines: String = "",

@@ -39,7 +39,8 @@ class PredictCycleUseCase @Inject constructor() {
     fun buildCalendarDays(
         settings: CycleSettings,
         monthStart: LocalDate,
-        loggedDates: Set<LocalDate>
+        loggedDates: Set<LocalDate>,
+        periodConfirmations: Map<LocalDate, Boolean?> = emptyMap()
     ): List<CalendarDay> {
         val firstDay = monthStart.withDayOfMonth(1)
         val endDay = firstDay.plusMonths(1).minusDays(1)
@@ -48,7 +49,7 @@ class PredictCycleUseCase @Inject constructor() {
         }.map { date ->
             CalendarDay(
                 date = date,
-                type = resolveTypeForDate(settings, date),
+                type = resolveTypeForDate(settings, date, periodConfirmations[date]),
                 hasLog = loggedDates.contains(date)
             )
         }.toList()
@@ -62,14 +63,23 @@ class PredictCycleUseCase @Inject constructor() {
         return next
     }
 
-    private fun resolveTypeForDate(settings: CycleSettings, date: LocalDate): CalendarDayType {
+    private fun resolveTypeForDate(
+        settings: CycleSettings,
+        date: LocalDate,
+        periodConfirmation: Boolean?
+    ): CalendarDayType {
         val nextPeriodStart = calculateNextPeriodStart(settings.lastPeriodStart, settings.cycleLength, date)
         val currentPeriodStart = nextPeriodStart.minusDays(settings.cycleLength.toLong())
         val currentPeriodEnd = currentPeriodStart.plusDays(settings.periodLength.toLong() - 1)
         val ovulationDate = nextPeriodStart.minusDays(14)
         val fertileStart = ovulationDate.minusDays(Constants.FERTILE_WINDOW_START_OFFSET.toLong())
         val fertileEnd = ovulationDate.plusDays(Constants.FERTILE_WINDOW_END_OFFSET.toLong())
-        return resolveDayType(date, currentPeriodStart, currentPeriodEnd, fertileStart, fertileEnd, ovulationDate)
+        val predictedType = resolveDayType(date, currentPeriodStart, currentPeriodEnd, fertileStart, fertileEnd, ovulationDate)
+        return when (periodConfirmation) {
+            true -> CalendarDayType.PERIOD
+            false -> if (predictedType == CalendarDayType.PERIOD) CalendarDayType.NORMAL else predictedType
+            null -> predictedType
+        }
     }
 
     private fun resolveDayType(

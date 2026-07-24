@@ -52,7 +52,8 @@ class CalendarViewModel @Inject constructor(
                     days = predictCycleUseCase.buildCalendarDays(
                         settings = settings,
                         monthStart = currentMonth,
-                        loggedDates = logs.map { it.date }.toSet()
+                        loggedDates = logs.map { it.date }.toSet(),
+                        periodConfirmations = logs.associate { it.date to it.isPeriodDay }
                     )
                 )
             }

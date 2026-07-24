@@ -146,7 +146,10 @@ fun PinkNoteNavHost(navController: NavHostController = rememberNavController()) 
                 route = AppRoute.DailyLog.route,
                 arguments = listOf(navArgument("date") { type = NavType.StringType })
             ) {
-                DailyLogScreen(dateText = it.arguments?.getString("date").orEmpty())
+                DailyLogScreen(
+                    dateText = it.arguments?.getString("date").orEmpty(),
+                    onSaved = { navController.popBackStack() }
+                )
             }
             composable(AppRoute.Reminder.route) {
                 ReminderScreen()
