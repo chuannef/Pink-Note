@@ -1,7 +1,6 @@
 package com.pinknote.app.data.remote.firebase
 
 import android.content.Context
-import android.net.Uri
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.pinknote.app.domain.model.CycleSettings
@@ -17,7 +16,6 @@ import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
-import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -32,8 +30,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 class FirebaseDataSource @Inject constructor(
     @ApplicationContext private val context: Context,
     private val auth: FirebaseAuth,
-    private val firestore: FirebaseFirestore,
-    private val storage: FirebaseStorage
+    private val firestore: FirebaseFirestore
 ) {
     private val googleSignInClient by lazy {
         GoogleSignIn.getClient(
@@ -94,12 +91,6 @@ class FirebaseDataSource @Inject constructor(
 
     suspend fun deleteAccount() {
         auth.currentUser?.delete()?.await()
-    }
-
-    suspend fun uploadAvatar(uid: String, uri: Uri): String {
-        val ref = storage.reference.child("avatars/$uid.jpg")
-        ref.putFile(uri).await()
-        return ref.downloadUrl.await().toString()
     }
 
     suspend fun saveUser(profile: UserProfile) {

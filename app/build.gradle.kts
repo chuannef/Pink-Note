@@ -82,7 +82,6 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
-    implementation("com.google.firebase:firebase-storage-ktx")
     implementation("com.google.firebase:firebase-messaging-ktx")
     implementation("com.google.android.gms:play-services-auth:21.3.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
@@ -96,7 +95,6 @@ dependencies {
     implementation("androidx.hilt:hilt-work:1.2.0")
     kapt("androidx.hilt:hilt-compiler:1.2.0")
 
-    implementation("com.airbnb.android:lottie-compose:6.6.2")
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
 
     testImplementation("junit:junit:4.13.2")
