@@ -53,6 +53,7 @@ import com.pinknote.app.presentation.common.PinkCard
 import com.pinknote.app.presentation.common.PinkMetric
 import com.pinknote.app.presentation.common.PinkPage
 import com.pinknote.app.presentation.common.PinkPrimaryButton
+import com.pinknote.app.presentation.localization.LocalAppStrings
 import com.pinknote.app.presentation.theme.BlushSurface
 import com.pinknote.app.presentation.theme.CreamWhite
 import com.pinknote.app.presentation.theme.PastelPink
@@ -68,6 +69,7 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
     statisticsViewModel: StatisticsViewModel = hiltViewModel()
 ) {
+    val strings = LocalAppStrings.current
     val state by viewModel.uiState.collectAsState()
     val statisticsState by statisticsViewModel.uiState.collectAsState()
     val prediction = state.prediction
@@ -92,27 +94,27 @@ fun HomeScreen(
             )
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                 PinkMetric(
-                    "Kỳ tiếp theo",
+                    strings.nextPeriod,
                     prediction?.nextPeriodStart?.toStorageString().orEmpty(),
                     modifier = Modifier.weight(1f),
-                    supporting = "Dự kiến"
+                    supporting = strings.estimated
                 )
                 PinkMetric(
-                    "Rụng trứng",
+                    strings.ovulation,
                     prediction?.ovulationDate?.toStorageString().orEmpty(),
                     modifier = Modifier.weight(1f),
-                    supporting = "Theo chu kỳ"
+                    supporting = strings.byCycle
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                 PinkMetric(
-                    "Ngày chu kỳ",
+                    strings.cycleDay,
                     prediction?.cycleDay?.toString().orEmpty(),
                     modifier = Modifier.weight(1f),
-                    supporting = "Hiện tại"
+                    supporting = strings.current
                 )
                 PinkMetric(
-                    "Thụ thai hôm nay",
+                    strings.fertilityToday,
                     prediction?.let { "${it.fertilityTodayPercent}%" }.orEmpty(),
                     modifier = Modifier.weight(1f),
                     supporting = prediction?.fertilityTodayLevel?.name?.replace('_', ' ').orEmpty()
@@ -128,13 +130,14 @@ fun HomeScreen(
 
 @Composable
 private fun Header(name: String) {
+    val strings = LocalAppStrings.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Xin chào", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(strings.hello, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(name, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface)
         }
         Box(
@@ -151,6 +154,7 @@ private fun Header(name: String) {
 
 @Composable
 private fun CycleHero(progress: Float, countdownText: String, onOpenPrediction: () -> Unit) {
+    val strings = LocalAppStrings.current
     PinkCard(containerColor = BlushSurface) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -167,17 +171,17 @@ private fun CycleHero(progress: Float, countdownText: String, onOpenPrediction: 
                 )
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("${(progress * 100).toInt()}%", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
-                    Text("chu kỳ", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(strings.cycle.lowercase(), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(Icons.Default.Favorite, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Text("Hôm nay", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    Text(strings.today, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 }
                 Text(countdownText, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
                 PinkPrimaryButton(onClick = onOpenPrediction) {
-                    Text("Xem dự đoán")
+                    Text(strings.viewPrediction)
                 }
             }
         }
@@ -186,37 +190,38 @@ private fun CycleHero(progress: Float, countdownText: String, onOpenPrediction: 
 
 @Composable
 private fun StatisticsSummary(state: StatisticsUiState) {
+    val strings = LocalAppStrings.current
     PinkCard(containerColor = CreamWhite) {
-        Text("Thống kê nhanh", style = MaterialTheme.typography.titleMedium)
+        Text(strings.quickStats, style = MaterialTheme.typography.titleMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
             StatTile(
-                label = "Chu kỳ",
-                value = state.cycle?.let { "${it.cycleLength} ngày" } ?: "Chưa có",
+                label = strings.cycle,
+                value = state.cycle?.let { "${it.cycleLength} ngày" } ?: strings.noData,
                 modifier = Modifier.weight(1f),
-                supporting = "Gần nhất"
+                supporting = strings.recent
             )
             StatTile(
-                label = "Hành kinh",
-                value = state.cycle?.let { "${it.periodLength} ngày" } ?: "Chưa có",
+                label = strings.period,
+                value = state.cycle?.let { "${it.periodLength} ngày" } ?: strings.noData,
                 modifier = Modifier.weight(1f),
-                supporting = "Thiết lập"
+                supporting = strings.configured
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
             StatTile(
-                label = "Mức đau TB",
+                label = strings.averagePain,
                 value = "%.1f".format(state.averagePain),
                 modifier = Modifier.weight(1f),
                 supporting = "Từ nhật ký"
             )
             StatTile(
-                label = "Theo dõi",
-                value = "${state.trackedMonths} tháng",
+                label = strings.tracking,
+                value = "${state.trackedMonths} ${strings.months}",
                 modifier = Modifier.weight(1f),
                 supporting = "Có dữ liệu"
             )
         }
-        Text("Biểu đồ mức đau", style = MaterialTheme.typography.titleSmall)
+        Text(strings.painChart, style = MaterialTheme.typography.titleSmall)
         PainTrendChart(logs = state.logs)
     }
 }
@@ -314,6 +319,7 @@ private fun StatTile(label: String, value: String, supporting: String, modifier:
 
 @Composable
 private fun CycleSetupCard(state: HomeUiState, onSave: (LocalDate, Int, Int) -> Unit) {
+    val strings = LocalAppStrings.current
     val settings = state.cycleSettings
     var lastPeriod by remember(settings?.lastPeriodStart) {
         mutableStateOf(settings?.lastPeriodStart?.toStorageString().orEmpty())
@@ -330,9 +336,9 @@ private fun CycleSetupCard(state: HomeUiState, onSave: (LocalDate, Int, Int) -> 
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             Column {
-                Text("Thiết lập chu kỳ", style = MaterialTheme.typography.titleMedium)
+                Text(strings.cycleSetup, style = MaterialTheme.typography.titleMedium)
                 Text(
-                    if (state.isEmpty) "Hãy nhập dữ liệu chu kỳ đầu tiên của bạn." else "Bạn có thể chỉnh lại bất cứ lúc nào.",
+                    if (state.isEmpty) strings.firstCycleSetupPrompt else strings.editCycleSetupPrompt,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -344,7 +350,7 @@ private fun CycleSetupCard(state: HomeUiState, onSave: (LocalDate, Int, Int) -> 
                 lastPeriod = it
                 errorMessage = null
             },
-            label = "Ngày bắt đầu gần nhất yyyy-MM-dd"
+            label = strings.lastPeriodDateLabel
         )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             PinkField(
@@ -353,7 +359,7 @@ private fun CycleSetupCard(state: HomeUiState, onSave: (LocalDate, Int, Int) -> 
                     cycleLength = it
                     errorMessage = null
                 },
-                label = "Chu kỳ",
+                label = strings.cycleLengthLabel,
                 modifier = Modifier.weight(1f),
                 keyboardType = KeyboardType.Number
             )
@@ -363,7 +369,7 @@ private fun CycleSetupCard(state: HomeUiState, onSave: (LocalDate, Int, Int) -> 
                     periodLength = it
                     errorMessage = null
                 },
-                label = "Hành kinh",
+                label = strings.periodLengthLabel,
                 modifier = Modifier.weight(1f),
                 keyboardType = KeyboardType.Number
             )
@@ -377,10 +383,10 @@ private fun CycleSetupCard(state: HomeUiState, onSave: (LocalDate, Int, Int) -> 
                 val cycleDays = cycleLength.toIntOrNull()
                 val periodDays = periodLength.toIntOrNull()
                 errorMessage = when {
-                    date == null -> "Hãy nhập ngày theo định dạng yyyy-MM-dd."
-                    cycleDays == null || cycleDays <= 0 -> "Hãy nhập độ dài chu kỳ hợp lệ."
-                    periodDays == null || periodDays <= 0 -> "Hãy nhập số ngày hành kinh hợp lệ."
-                    periodDays >= cycleDays -> "Số ngày hành kinh phải nhỏ hơn độ dài chu kỳ."
+                    date == null -> strings.invalidDate
+                    cycleDays == null || cycleDays <= 0 -> strings.invalidCycleLength
+                    periodDays == null || periodDays <= 0 -> strings.invalidPeriodLength
+                    periodDays >= cycleDays -> strings.periodShorterThanCycle
                     else -> null
                 }
                 if (date != null && cycleDays != null && periodDays != null && errorMessage == null) {
@@ -388,7 +394,7 @@ private fun CycleSetupCard(state: HomeUiState, onSave: (LocalDate, Int, Int) -> 
                 }
             }
         ) {
-            Text("Lưu thiết lập")
+            Text(strings.saveCycleSettings)
         }
     }
 }
@@ -419,13 +425,14 @@ private fun PinkField(
 
 @Composable
 private fun TipCard() {
+    val strings = LocalAppStrings.current
     PinkCard(containerColor = CreamWhite) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
             Icon(Icons.Default.LocalDrink, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Gợi ý hôm nay", style = MaterialTheme.typography.titleMedium)
+                Text(strings.todayTips, style = MaterialTheme.typography.titleMedium)
                 Text(
-                    "Uống đủ nước, ngủ đúng giờ và ghi lại triệu chứng. Dữ liệu nhỏ mỗi ngày giúp dự đoán dễ tin hơn.",
+                    strings.todayTipsBody,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

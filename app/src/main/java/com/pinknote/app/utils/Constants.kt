@@ -19,6 +19,6 @@ object Constants {
 
     const val APP_VERSION = "1.0.0"
     const val DEVELOPER_NAME = "PinkNote"
-    const val SUPPORT_EMAIL = "support@pinknote.app"
+    const val SUPPORT_EMAIL = "hoangchuanks@gmail.com"
     const val PRIVACY_POLICY = "Privacy policy: local app data and Firebase data are used for account, cycle, reminder, and personal health tracking features."
 }

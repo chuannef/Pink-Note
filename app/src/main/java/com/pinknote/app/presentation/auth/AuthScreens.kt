@@ -72,6 +72,7 @@ import com.google.android.gms.common.api.CommonStatusCodes
 import com.pinknote.app.R
 import com.pinknote.app.presentation.common.PinkPage
 import com.pinknote.app.presentation.common.PinkPrimaryButton
+import com.pinknote.app.presentation.localization.LocalAppStrings
 import com.pinknote.app.presentation.theme.BlushSurface
 import com.pinknote.app.presentation.theme.CreamWhite
 import com.pinknote.app.presentation.theme.PastelPink
@@ -83,6 +84,7 @@ fun LoginScreen(
     onRegister: () -> Unit,
     viewModel: AuthViewModel = hiltViewModel()
 ) {
+    val strings = LocalAppStrings.current
     val uiState by viewModel.uiState.collectAsState()
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -128,8 +130,8 @@ fun LoginScreen(
     }
 
     AuthFormScaffold(
-        title = "Chào mừng trở lại",
-        subtitle = "Tiếp tục theo dõi chu kỳ, nhật ký sức khỏe và các nhắc nhở quan trọng của bạn."
+        title = strings.loginTitle,
+        subtitle = strings.loginSubtitle
     ) {
         PinkTextField(
             value = email,
@@ -137,7 +139,7 @@ fun LoginScreen(
                 email = it
                 localError = null
             },
-            label = "Email",
+            label = strings.email,
             leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
         )
@@ -147,7 +149,7 @@ fun LoginScreen(
                 password = it
                 localError = null
             },
-            label = "Mật khẩu",
+            label = strings.password,
             leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
             visualTransformation = PasswordVisualTransformation()
         )
@@ -158,12 +160,12 @@ fun LoginScreen(
             },
             enabled = !uiState.isLoading
         ) {
-            Text("Đăng nhập", fontWeight = FontWeight.SemiBold)
+            Text(strings.login, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.width(8.dp))
             Icon(Icons.Default.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
         }
         GoogleAuthButton(
-            text = "Đăng nhập bằng Google",
+            text = strings.loginWithGoogle,
             enabled = !uiState.isLoading,
             onClick = {
                 googleClient.signOut().addOnCompleteListener {
@@ -177,10 +179,10 @@ fun LoginScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             TextButton(onClick = { viewModel.resetPassword(email) }) {
-                Text("Quên mật khẩu")
+                Text(strings.forgotPassword)
             }
             TextButton(onClick = onRegister) {
-                Text("Tạo tài khoản")
+                Text(strings.createAccount)
             }
         }
         AuthStatus(
@@ -196,6 +198,7 @@ fun RegisterScreen(
     onLogin: () -> Unit,
     viewModel: AuthViewModel = hiltViewModel()
 ) {
+    val strings = LocalAppStrings.current
     val uiState by viewModel.uiState.collectAsState()
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -207,8 +210,8 @@ fun RegisterScreen(
     }
 
     AuthFormScaffold(
-        title = "Tạo tài khoản",
-        subtitle = "Bắt đầu hồ sơ Pink Note để dự đoán chu kỳ và lưu nhật ký cá nhân mỗi ngày."
+        title = strings.registerTitle,
+        subtitle = strings.registerSubtitle
     ) {
         PinkTextField(
             value = name,
@@ -216,7 +219,7 @@ fun RegisterScreen(
                 name = it
                 localError = null
             },
-            label = "Tên",
+            label = strings.name,
             leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) }
         )
         PinkTextField(
@@ -225,7 +228,7 @@ fun RegisterScreen(
                 email = it
                 localError = null
             },
-            label = "Email",
+            label = strings.email,
             leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
         )
@@ -235,7 +238,7 @@ fun RegisterScreen(
                 password = it
                 localError = null
             },
-            label = "Mật khẩu",
+            label = strings.password,
             leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
             visualTransformation = PasswordVisualTransformation()
         )
@@ -249,7 +252,7 @@ fun RegisterScreen(
             },
             enabled = !uiState.isLoading
         ) {
-            Text("Đăng ký", fontWeight = FontWeight.SemiBold)
+            Text(strings.register, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.width(8.dp))
             Icon(Icons.Default.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
         }
@@ -257,7 +260,7 @@ fun RegisterScreen(
             onClick = onLogin,
             modifier = Modifier.align(Alignment.CenterHorizontally)
         ) {
-            Text("Đã có tài khoản")
+            Text(strings.alreadyHaveAccount)
         }
         AuthStatus(
             isLoading = uiState.isLoading,
@@ -319,6 +322,7 @@ private fun AuthFormScaffold(
 
 @Composable
 private fun AuthHero(title: String, subtitle: String) {
+    val strings = LocalAppStrings.current
     val transition = rememberInfiniteTransition(label = "auth_hero_motion")
     val iconScale by transition.animateFloat(
         initialValue = 0.96f,
@@ -369,7 +373,7 @@ private fun AuthHero(title: String, subtitle: String) {
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "Nhật ký chu kỳ cá nhân",
+                    text = strings.personalCycleJournal,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -394,17 +398,17 @@ private fun AuthHero(title: String, subtitle: String) {
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             AuthFeatureChip(
-                text = "Riêng tư",
+                text = strings.privacy,
                 icon = { Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(16.dp)) },
                 modifier = Modifier.weight(1f)
             )
             AuthFeatureChip(
-                text = "Dễ theo dõi",
+                text = strings.easyTracking,
                 icon = { Icon(Icons.Default.Favorite, contentDescription = null, modifier = Modifier.size(16.dp)) },
                 modifier = Modifier.weight(1f)
             )
             AuthFeatureChip(
-                text = "Cá nhân",
+                text = strings.personal,
                 icon = { Icon(Icons.Default.AccountCircle, contentDescription = null, modifier = Modifier.size(16.dp)) },
                 modifier = Modifier.weight(1f)
             )
@@ -518,6 +522,7 @@ private fun PinkTextField(
 
 @Composable
 private fun AuthStatus(isLoading: Boolean, message: String?) {
+    val strings = LocalAppStrings.current
     if (isLoading) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -530,7 +535,7 @@ private fun AuthStatus(isLoading: Boolean, message: String?) {
             )
             Spacer(Modifier.width(10.dp))
             Text(
-                text = "Đang xử lý",
+                text = strings.processing,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

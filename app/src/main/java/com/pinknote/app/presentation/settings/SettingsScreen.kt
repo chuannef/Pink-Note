@@ -26,6 +26,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.pinknote.app.domain.model.AppLanguage
 import com.pinknote.app.domain.model.ThemeMode
 import com.pinknote.app.presentation.common.PinkCard
+import com.pinknote.app.presentation.localization.LocalAppStrings
 import com.pinknote.app.utils.Constants
 
 @Composable
@@ -34,6 +35,7 @@ fun SettingsScreen(
     onLoggedOut: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
+    val strings = LocalAppStrings.current
     val settings by viewModel.settings.collectAsState()
     val isAdmin by viewModel.isAdmin.collectAsState()
     val isLoggingOut by viewModel.isLoggingOut.collectAsState()
@@ -53,8 +55,8 @@ fun SettingsScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
-        Text("Cài đặt", style = MaterialTheme.typography.headlineMedium)
-        Text("Giao diện", style = MaterialTheme.typography.titleMedium)
+        Text(strings.settings, style = MaterialTheme.typography.headlineMedium)
+        Text(strings.theme, style = MaterialTheme.typography.titleMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             ThemeMode.entries.forEach { mode ->
                 FilterChip(
@@ -64,7 +66,7 @@ fun SettingsScreen(
                 )
             }
         }
-        Text("Ngôn ngữ", style = MaterialTheme.typography.titleMedium)
+        Text(strings.language, style = MaterialTheme.typography.titleMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             AppLanguage.entries.forEach { language ->
                 FilterChip(
@@ -75,17 +77,17 @@ fun SettingsScreen(
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-            Text("Thông báo")
+            Text(strings.notifications)
             Switch(checked = settings.notificationsEnabled, onCheckedChange = viewModel::setNotificationsEnabled)
         }
         if (isAdmin) {
             Button(onClick = onOpenAdmin, modifier = Modifier.fillMaxWidth()) {
-                Text("Quản trị ứng dụng")
+                Text(strings.adminConsole)
             }
         }
         AboutPinkNoteCard()
         Button(onClick = viewModel::sendChangePasswordEmail, modifier = Modifier.fillMaxWidth()) {
-            Text("Gửi email đổi mật khẩu")
+            Text(strings.sendPasswordEmail)
         }
         Button(
             onClick = viewModel::logout,
@@ -95,34 +97,31 @@ fun SettingsScreen(
             if (isLoggingOut) {
                 CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
             } else {
-                Text("Đăng xuất")
+                Text(strings.logout)
             }
         }
         Button(onClick = viewModel::deleteAccount, modifier = Modifier.fillMaxWidth()) {
-            Text("Xóa tài khoản")
+            Text(strings.deleteAccount)
         }
     }
 }
 
 @Composable
 private fun AboutPinkNoteCard() {
+    val strings = LocalAppStrings.current
     PinkCard {
-        Text("About PinkNote", style = MaterialTheme.typography.titleMedium)
-        Text("Version: ${Constants.APP_VERSION}", style = MaterialTheme.typography.bodyMedium)
-        Text("Developer: ${Constants.DEVELOPER_NAME}", style = MaterialTheme.typography.bodyMedium)
-        Text("Contact: ${Constants.SUPPORT_EMAIL}", style = MaterialTheme.typography.bodyMedium)
+        Text(strings.about, style = MaterialTheme.typography.titleMedium)
+        Text("${strings.version}: ${Constants.APP_VERSION}", style = MaterialTheme.typography.bodyMedium)
+        Text("${strings.developer}: ${Constants.DEVELOPER_NAME}", style = MaterialTheme.typography.bodyMedium)
+        Text("${strings.contact}: ${Constants.SUPPORT_EMAIL}", style = MaterialTheme.typography.bodyMedium)
         Text(Constants.PRIVACY_POLICY, style = MaterialTheme.typography.bodyMedium)
         Text(
             "Open-source libraries: Kotlin, Jetpack Compose, Hilt, Room, Firebase, WorkManager, MPAndroidChart.",
             style = MaterialTheme.typography.bodyMedium
         )
-        Text("Medical Disclaimer", style = MaterialTheme.typography.titleSmall)
+        Text(strings.medicalDisclaimer, style = MaterialTheme.typography.titleSmall)
         Text(
-            "This application is intended for educational and personal health tracking purposes only.\n\n" +
-                "It does not provide medical diagnosis, treatment, or professional medical advice.\n\n" +
-                "Predictions of menstruation, ovulation, and fertility are estimates based on user-entered data and statistical models.\n\n" +
-                "The application should not be used as a method of contraception or pregnancy planning.\n\n" +
-                "Please consult a qualified healthcare professional for any medical concerns.",
+            strings.medicalDisclaimerBody,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

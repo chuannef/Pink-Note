@@ -33,6 +33,7 @@ import com.pinknote.app.presentation.auth.SplashScreen
 import com.pinknote.app.presentation.calendar.CalendarScreen
 import com.pinknote.app.presentation.dailylog.DailyLogScreen
 import com.pinknote.app.presentation.home.HomeScreen
+import com.pinknote.app.presentation.localization.LocalAppStrings
 import com.pinknote.app.presentation.prediction.PredictionScreen
 import com.pinknote.app.presentation.profile.EditProfileScreen
 import com.pinknote.app.presentation.profile.ProfileScreen
@@ -41,20 +42,20 @@ import com.pinknote.app.presentation.settings.SettingsScreen
 
 private data class BottomItem(
     val route: AppRoute,
-    val label: String,
     val icon: androidx.compose.ui.graphics.vector.ImageVector
 )
 
 private val bottomItems = listOf(
-    BottomItem(AppRoute.Home, "Home", Icons.Default.Home),
-    BottomItem(AppRoute.Calendar, "Lịch", Icons.Default.CalendarMonth),
-    BottomItem(AppRoute.Reminder, "Nhắc", Icons.Default.Notifications),
-    BottomItem(AppRoute.Profile, "Hồ sơ", Icons.Default.Person),
-    BottomItem(AppRoute.Settings, "Cài đặt", Icons.Default.Settings)
+    BottomItem(AppRoute.Home, Icons.Default.Home),
+    BottomItem(AppRoute.Calendar, Icons.Default.CalendarMonth),
+    BottomItem(AppRoute.Reminder, Icons.Default.Notifications),
+    BottomItem(AppRoute.Profile, Icons.Default.Person),
+    BottomItem(AppRoute.Settings, Icons.Default.Settings)
 )
 
 @Composable
 fun PinkNoteNavHost(navController: NavHostController = rememberNavController()) {
+    val strings = LocalAppStrings.current
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val showBottomBar = bottomItems.any { it.route.route == currentRoute }
@@ -68,6 +69,14 @@ fun PinkNoteNavHost(navController: NavHostController = rememberNavController()) 
                     tonalElevation = 8.dp
                 ) {
                     bottomItems.forEach { item ->
+                        val label = when (item.route) {
+                            AppRoute.Home -> strings.home
+                            AppRoute.Calendar -> strings.calendar
+                            AppRoute.Reminder -> strings.reminders
+                            AppRoute.Profile -> strings.profile
+                            AppRoute.Settings -> strings.settings
+                            else -> ""
+                        }
                         NavigationBarItem(
                             selected = currentRoute == item.route.route,
                             onClick = {
@@ -79,8 +88,8 @@ fun PinkNoteNavHost(navController: NavHostController = rememberNavController()) 
                                     restoreState = true
                                 }
                             },
-                            icon = { Icon(item.icon, contentDescription = item.label) },
-                            label = { Text(item.label) },
+                            icon = { Icon(item.icon, contentDescription = label) },
+                            label = { Text(label) },
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = MaterialTheme.colorScheme.primary,
                                 selectedTextColor = MaterialTheme.colorScheme.primary,
