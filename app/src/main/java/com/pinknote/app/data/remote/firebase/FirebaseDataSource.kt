@@ -38,7 +38,7 @@ class FirebaseDataSource @Inject constructor(
             context,
             GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestEmail()
-                .requestIdToken(context.getString(R.string.google_web_client_id))
+                .requestIdToken(context.getString(R.string.default_web_client_id))
                 .build()
         )
     }
@@ -54,7 +54,7 @@ class FirebaseDataSource @Inject constructor(
             email = firebaseUser.email.orEmpty().ifBlank { email },
             avatarUrl = firebaseUser.photoUrl?.toString()
         )
-        saveUser(profile)
+        runCatching { saveUser(profile) }
         return profile
     }
 
@@ -91,7 +91,7 @@ class FirebaseDataSource @Inject constructor(
         val authEmail = firebaseUser.email.orEmpty().ifBlank { fallbackEmail }
         val authName = firebaseUser.displayName.orEmpty()
         val authAvatar = firebaseUser.photoUrl?.toString()
-        val storedProfile = getUser(firebaseUser.uid)
+        val storedProfile = runCatching { getUser(firebaseUser.uid) }.getOrNull()
         val resolvedProfile = storedProfile?.copy(
             name = storedProfile.name.ifBlank { authName },
             email = storedProfile.email.ifBlank { authEmail },
@@ -103,7 +103,7 @@ class FirebaseDataSource @Inject constructor(
             avatarUrl = authAvatar
         )
         if (storedProfile != resolvedProfile) {
-            saveUser(resolvedProfile)
+            runCatching { saveUser(resolvedProfile) }
         }
         return resolvedProfile
     }
@@ -119,7 +119,7 @@ class FirebaseDataSource @Inject constructor(
         val snapshot = firestore.collection(Constants.USERS_COLLECTION).document(uid).get().await()
         val data = snapshot.data ?: return null
         if (!data.containsKey("role")) {
-            setUserRole(uid, AdminPolicy.ROLE_USER)
+            runCatching { setUserRole(uid, AdminPolicy.ROLE_USER) }
         }
         return data.toUserProfile(uid)
     }

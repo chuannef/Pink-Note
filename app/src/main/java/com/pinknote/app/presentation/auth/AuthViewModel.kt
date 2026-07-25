@@ -73,6 +73,10 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    fun showAuthError(message: String) {
+        _uiState.value = _uiState.value.copy(isLoading = false, message = message)
+    }
+
     fun resetPassword(email: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)

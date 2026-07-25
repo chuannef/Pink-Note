@@ -5,6 +5,7 @@ import com.pinknote.app.data.remote.firebase.FirebaseDataSource
 import com.pinknote.app.domain.model.AppResult
 import com.pinknote.app.domain.model.UserProfile
 import com.pinknote.app.domain.repository.AuthRepository
+import com.google.firebase.FirebaseNetworkException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthException
 import kotlinx.coroutines.channels.awaitClose
@@ -81,10 +82,16 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     private fun Throwable.toAuthMessage(fallback: String): String {
+        if (hasCause<FirebaseNetworkException>()) {
+            return "Không thể kết nối Firebase. Hãy kiểm tra internet, ngày giờ thiết bị, Google Play Services và thử lại."
+        }
+
         val authCode = (this as? FirebaseAuthException)?.errorCode
         return when (authCode) {
             "ERROR_CONFIGURATION_NOT_FOUND" ->
                 "Firebase Authentication chưa được bật hoặc chưa cấu hình provider. Hãy bật Email/Password hoặc Google trong Firebase Console."
+            "ERROR_NETWORK_REQUEST_FAILED" ->
+                "Không thể kết nối Firebase. Hãy kiểm tra internet, ngày giờ thiết bị, Google Play Services và thử lại."
             "ERROR_EMAIL_ALREADY_IN_USE" -> "Email này đã được đăng ký."
             "ERROR_INVALID_EMAIL" -> "Email không hợp lệ."
             "ERROR_WEAK_PASSWORD" -> "Mật khẩu quá yếu, hãy nhập ít nhất 6 ký tự."
@@ -92,5 +99,14 @@ class AuthRepositoryImpl @Inject constructor(
             "ERROR_USER_NOT_FOUND" -> "Tài khoản không tồn tại."
             else -> message ?: fallback
         }
+    }
+
+    private inline fun <reified T : Throwable> Throwable.hasCause(): Boolean {
+        var current: Throwable? = this
+        while (current != null) {
+            if (current is T) return true
+            current = current.cause
+        }
+        return false
     }
 }

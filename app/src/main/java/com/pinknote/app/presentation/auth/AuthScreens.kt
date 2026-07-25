@@ -66,7 +66,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes
 import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.common.api.CommonStatusCodes
 import com.pinknote.app.R
 import com.pinknote.app.presentation.common.PinkPage
 import com.pinknote.app.presentation.common.PinkPrimaryButton
@@ -91,18 +93,33 @@ fun LoginScreen(
             context,
             GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestEmail()
-                .requestIdToken(context.getString(R.string.google_web_client_id))
+                .requestIdToken(context.getString(R.string.default_web_client_id))
                 .build()
         )
     }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val token = runCatching {
-                GoogleSignIn.getSignedInAccountFromIntent(result.data)
-                    .getResult(ApiException::class.java)
-                    .idToken
-            }.getOrNull()
-            token?.let(viewModel::loginWithGoogle)
+        var googleErrorMessage: String? = null
+        val token = runCatching {
+            GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                .getResult(ApiException::class.java)
+                .idToken
+        }.fold(
+            onSuccess = { it },
+            onFailure = { error ->
+                googleErrorMessage = error.toGoogleSignInMessage()
+                null
+            }
+        )
+
+        if (token.isNullOrBlank()) {
+            val message = googleErrorMessage ?: if (result.resultCode == Activity.RESULT_OK) {
+                    "Không lấy được Google ID token. Hãy kiểm tra SHA-1/SHA-256 trong Firebase và tải lại google-services.json."
+                } else {
+                    "Google chưa trả token cho app (resultCode=${result.resultCode}). Hãy kiểm tra provider Google, SHA-1/SHA-256 và tải lại google-services.json."
+                }
+            viewModel.showAuthError(message)
+        } else {
+            viewModel.loginWithGoogle(token)
         }
     }
 
@@ -246,6 +263,24 @@ fun RegisterScreen(
             isLoading = uiState.isLoading,
             message = localError ?: uiState.message
         )
+    }
+}
+
+private fun Throwable.toGoogleSignInMessage(): String {
+    val statusCode = (this as? ApiException)?.statusCode
+    return when (statusCode) {
+        CommonStatusCodes.DEVELOPER_ERROR ->
+            "Google Sign-In lỗi cấu hình. Hãy thêm SHA-1/SHA-256 debug vào Firebase, tải lại google-services.json rồi cài lại app."
+        CommonStatusCodes.NETWORK_ERROR ->
+            "Không thể kết nối Google. Hãy kiểm tra internet, ngày giờ thiết bị và Google Play Services."
+        GoogleSignInStatusCodes.SIGN_IN_CANCELLED ->
+            "Bạn đã hủy đăng nhập Google."
+        GoogleSignInStatusCodes.SIGN_IN_CURRENTLY_IN_PROGRESS ->
+            "Google Sign-In đang xử lý, hãy thử lại sau vài giây."
+        GoogleSignInStatusCodes.SIGN_IN_FAILED ->
+            "Google Sign-In thất bại. Hãy kiểm tra SHA-1/SHA-256 và provider Google trong Firebase Authentication."
+        else ->
+            "Google Sign-In thất bại${statusCode?.let { " (mã $it: ${GoogleSignInStatusCodes.getStatusCodeString(it)})" }.orEmpty()}."
     }
 }
 
