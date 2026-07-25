@@ -40,7 +40,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -325,7 +327,8 @@ private fun CycleSetupCard(state: HomeUiState, onSave: (LocalDate, Int, Int) -> 
     val strings = LocalAppStrings.current
     val settings = state.cycleSettings
     var lastPeriod by remember(settings?.lastPeriodStart) {
-        mutableStateOf(settings?.lastPeriodStart?.toStorageString().orEmpty())
+        val text = settings?.lastPeriodStart?.toStorageString().orEmpty()
+        mutableStateOf(TextFieldValue(text = text, selection = TextRange(text.length)))
     }
     var cycleLength by remember(settings?.cycleLength) {
         mutableStateOf(settings?.cycleLength?.toString().orEmpty())
@@ -347,13 +350,15 @@ private fun CycleSetupCard(state: HomeUiState, onSave: (LocalDate, Int, Int) -> 
                 )
             }
         }
-        PinkField(
+        PinkFieldValue(
             value = lastPeriod,
             onValueChange = {
-                lastPeriod = it
+                val formatted = formatCycleDateInput(rawInput = it.text, previousValue = lastPeriod.text)
+                lastPeriod = TextFieldValue(text = formatted, selection = TextRange(formatted.length))
                 errorMessage = null
             },
-            label = strings.lastPeriodDateLabel
+            label = strings.lastPeriodDateLabel,
+            keyboardType = KeyboardType.Number
         )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             PinkField(
@@ -382,7 +387,7 @@ private fun CycleSetupCard(state: HomeUiState, onSave: (LocalDate, Int, Int) -> 
         }
         PinkPrimaryButton(
             onClick = {
-                val date = runCatching { LocalDate.parse(lastPeriod) }.getOrNull()
+                val date = runCatching { LocalDate.parse(lastPeriod.text) }.getOrNull()
                 val cycleDays = cycleLength.toIntOrNull()
                 val periodDays = periodLength.toIntOrNull()
                 errorMessage = when {
@@ -406,6 +411,30 @@ private fun CycleSetupCard(state: HomeUiState, onSave: (LocalDate, Int, Int) -> 
 private fun PinkField(
     value: String,
     onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    keyboardType: KeyboardType = KeyboardType.Text
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.65f),
+            focusedContainerColor = CreamWhite,
+            unfocusedContainerColor = CreamWhite
+        )
+    )
+}
+
+@Composable
+private fun PinkFieldValue(
+    value: TextFieldValue,
+    onValueChange: (TextFieldValue) -> Unit,
     label: String,
     modifier: Modifier = Modifier,
     keyboardType: KeyboardType = KeyboardType.Text
