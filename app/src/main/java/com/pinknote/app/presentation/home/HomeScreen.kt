@@ -22,6 +22,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.LocalDrink
+import androidx.compose.material.icons.filled.Spa
+import androidx.compose.material.icons.filled.TipsAndUpdates
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -48,6 +50,7 @@ import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
+import com.pinknote.app.domain.model.AppLanguage
 import com.pinknote.app.domain.model.DailyLog
 import com.pinknote.app.presentation.common.PinkCard
 import com.pinknote.app.presentation.common.PinkMetric
@@ -120,7 +123,7 @@ fun HomeScreen(
                     supporting = prediction?.fertilityTodayLevel?.name?.replace('_', ' ').orEmpty()
                 )
             }
-            TipCard()
+            TipCard(uid = state.user?.uid.orEmpty())
             StatisticsSummary(statisticsState)
             CycleSetupCard(state = state, onSave = viewModel::saveCycle)
             Spacer(Modifier.height(8.dp))
@@ -424,15 +427,25 @@ private fun PinkField(
 }
 
 @Composable
-private fun TipCard() {
+private fun TipCard(uid: String) {
     val strings = LocalAppStrings.current
+    val tip = remember(uid) { dailyTipForUser(uid) }
+    val isEnglish = strings.languageCode == AppLanguage.EN
+    val icon = when (tip.category) {
+        TipCategory.DID_YOU_KNOW -> Icons.Default.TipsAndUpdates
+        TipCategory.TODAY_TIP -> Icons.Default.LocalDrink
+        TipCategory.SELF_CARE -> Icons.Default.Spa
+    }
+    val title = if (isEnglish) tip.enTitle else tip.viTitle
+    val body = if (isEnglish) tip.enBody else tip.viBody
+
     PinkCard(containerColor = CreamWhite) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
-            Icon(Icons.Default.LocalDrink, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(strings.todayTips, style = MaterialTheme.typography.titleMedium)
+                Text(title, style = MaterialTheme.typography.titleMedium)
                 Text(
-                    strings.todayTipsBody,
+                    body,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

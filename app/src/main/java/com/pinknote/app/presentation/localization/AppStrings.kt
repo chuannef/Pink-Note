@@ -4,6 +4,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import com.pinknote.app.domain.model.AppLanguage
 
 data class AppStrings(
+    val languageCode: AppLanguage,
     val home: String,
     val calendar: String,
     val reminders: String,
@@ -85,6 +86,7 @@ fun appStrings(language: AppLanguage): AppStrings {
 }
 
 private val viStrings = AppStrings(
+    languageCode = AppLanguage.VI,
     home = "Home",
     calendar = "Lịch",
     reminders = "Nhắc",
@@ -157,6 +159,7 @@ private val viStrings = AppStrings(
 )
 
 private val enStrings = AppStrings(
+    languageCode = AppLanguage.EN,
     home = "Home",
     calendar = "Calendar",
     reminders = "Reminders",
