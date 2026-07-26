@@ -144,10 +144,6 @@ class PredictCycleUseCase @Inject constructor() {
         val lookAheadDays = 14L + Constants.FERTILE_WINDOW_START_OFFSET + fertilePadding + periodLength
         var periodStart = currentPeriodStart
 
-        while (periodStart.isAfter(firstDay)) {
-            periodStart = periodStart.minusDays(cycleDays)
-        }
-
         val periodStarts = mutableListOf<LocalDate>()
         val scheduleEnd = endDay.plusDays(lookAheadDays)
         while (!periodStart.isAfter(scheduleEnd)) {
@@ -196,6 +192,10 @@ class PredictCycleUseCase @Inject constructor() {
         today: LocalDate,
         isLate: Boolean
     ): CalendarDayType {
+        if (date.isBefore(currentPeriodStart)) {
+            return CalendarDayType.NORMAL
+        }
+
         periodStarts.forEach { periodStart ->
             val periodEnd = periodStart.plusDays(periodLength.toLong() - 1)
             if (!date.isBefore(periodStart) && !date.isAfter(periodEnd)) {
