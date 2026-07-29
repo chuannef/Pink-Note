@@ -127,7 +127,9 @@ fun HomeScreen(
             }
             TipCard(uid = state.user?.uid.orEmpty())
             StatisticsSummary(statisticsState)
-            CycleSetupCard(state = state, onSave = viewModel::saveCycle)
+            if (state.isEmpty) {
+                CycleSetupCard(state = state, onSave = viewModel::saveCycle)
+            }
             Spacer(Modifier.height(8.dp))
         }
     }
@@ -360,6 +362,11 @@ private fun CycleSetupCard(state: HomeUiState, onSave: (LocalDate, Int, Int) -> 
             label = strings.lastPeriodDateLabel,
             keyboardType = KeyboardType.Number
         )
+        Text(
+            strings.optionalCycleSetupHint,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             PinkField(
                 value = cycleLength,
@@ -388,17 +395,19 @@ private fun CycleSetupCard(state: HomeUiState, onSave: (LocalDate, Int, Int) -> 
         PinkPrimaryButton(
             onClick = {
                 val date = runCatching { LocalDate.parse(lastPeriod.text) }.getOrNull()
-                val cycleDays = cycleLength.toIntOrNull()
-                val periodDays = periodLength.toIntOrNull()
+                val cycleSetup = CycleSetupDefaults.resolve(
+                    cycleLengthInput = cycleLength,
+                    periodLengthInput = periodLength
+                )
                 errorMessage = when {
                     date == null -> strings.invalidDate
-                    cycleDays == null || cycleDays <= 0 -> strings.invalidCycleLength
-                    periodDays == null || periodDays <= 0 -> strings.invalidPeriodLength
-                    periodDays >= cycleDays -> strings.periodShorterThanCycle
+                    cycleSetup.error == CycleSetupInputError.INVALID_CYCLE_LENGTH -> strings.invalidCycleLength
+                    cycleSetup.error == CycleSetupInputError.INVALID_PERIOD_LENGTH -> strings.invalidPeriodLength
+                    cycleSetup.error == CycleSetupInputError.PERIOD_SHORTER_THAN_CYCLE -> strings.periodShorterThanCycle
                     else -> null
                 }
-                if (date != null && cycleDays != null && periodDays != null && errorMessage == null) {
-                    onSave(date, cycleDays, periodDays)
+                if (date != null && cycleSetup.error == null) {
+                    onSave(date, cycleSetup.cycleLength, cycleSetup.periodLength)
                 }
             }
         ) {
