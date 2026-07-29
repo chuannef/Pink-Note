@@ -26,6 +26,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.pinknote.app.domain.model.AppLanguage
 import com.pinknote.app.domain.model.ThemeMode
 import com.pinknote.app.presentation.common.PinkCard
+import com.pinknote.app.presentation.localization.AppStrings
 import com.pinknote.app.presentation.localization.LocalAppStrings
 import com.pinknote.app.utils.Constants
 
@@ -62,7 +63,7 @@ fun SettingsScreen(
                 FilterChip(
                     selected = settings.themeMode == mode,
                     onClick = { viewModel.setTheme(mode) },
-                    label = { Text(mode.name) }
+                    label = { Text(strings.themeModeLabel(mode)) }
                 )
             }
         }
@@ -103,6 +104,14 @@ fun SettingsScreen(
         Button(onClick = viewModel::deleteAccount, modifier = Modifier.fillMaxWidth()) {
             Text(strings.deleteAccount)
         }
+    }
+}
+
+private fun AppStrings.themeModeLabel(mode: ThemeMode): String {
+    return when (mode) {
+        ThemeMode.SYSTEM -> themeSystem
+        ThemeMode.LIGHT -> themeLight
+        ThemeMode.DARK -> themeDark
     }
 }
 
