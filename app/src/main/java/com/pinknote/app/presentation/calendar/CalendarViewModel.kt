@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pinknote.app.domain.model.CalendarDay
 import com.pinknote.app.domain.model.CalendarDayType
+import com.pinknote.app.domain.model.FertilityEstimate
 import com.pinknote.app.domain.repository.AuthRepository
 import com.pinknote.app.domain.repository.CycleRepository
 import com.pinknote.app.domain.usecase.PredictCycleUseCase
@@ -24,7 +25,8 @@ data class CalendarUiState(
     val month: LocalDate = LocalDate.now().withDayOfMonth(1),
     val days: List<CalendarDay> = emptyList(),
     val selectedDate: LocalDate = LocalDate.now(),
-    val hasCycleSetup: Boolean = false
+    val hasCycleSetup: Boolean = false,
+    val selectedFertilityWindow: List<FertilityEstimate> = emptyList()
 )
 
 @HiltViewModel
@@ -47,21 +49,32 @@ class CalendarViewModel @Inject constructor(
                 cycleRepository.observeDailyLogs(user.uid)
             ) { currentMonth, selected, cycle, logs ->
                 val loggedDates = logs.map { it.date }.toSet()
+                val calendarDays = if (cycle == null) {
+                    buildEmptyCalendarDays(currentMonth, loggedDates)
+                } else {
+                    predictCycleUseCase.buildCalendarDays(
+                        settings = cycle,
+                        monthStart = currentMonth,
+                        loggedDates = loggedDates,
+                        periodConfirmations = logs.associate { it.date to it.isPeriodDay },
+                        logs = logs
+                    )
+                }
+                val selectedFertilityWindow = if (cycle == null) {
+                    emptyList()
+                } else {
+                    predictCycleUseCase.buildFertilityWindow(
+                        settings = cycle,
+                        centerDate = selected,
+                        logs = logs
+                    )
+                }
                 CalendarUiState(
                     month = currentMonth,
                     selectedDate = selected,
                     hasCycleSetup = cycle != null,
-                    days = if (cycle == null) {
-                        buildEmptyCalendarDays(currentMonth, loggedDates)
-                    } else {
-                        predictCycleUseCase.buildCalendarDays(
-                            settings = cycle,
-                            monthStart = currentMonth,
-                            loggedDates = loggedDates,
-                            periodConfirmations = logs.associate { it.date to it.isPeriodDay },
-                            logs = logs
-                        )
-                    }
+                    days = calendarDays,
+                    selectedFertilityWindow = selectedFertilityWindow
                 )
             }
         }

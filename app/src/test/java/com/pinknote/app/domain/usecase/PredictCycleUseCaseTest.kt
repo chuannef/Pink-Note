@@ -2,6 +2,7 @@ package com.pinknote.app.domain.usecase
 
 import com.pinknote.app.domain.model.CalendarDayType
 import com.pinknote.app.domain.model.CycleSettings
+import com.pinknote.app.domain.model.FertilityLevel
 import com.pinknote.app.domain.model.PredictionConfidence
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -112,5 +113,25 @@ class PredictCycleUseCaseTest {
 
         assertEquals(CalendarDayType.NORMAL, days.first { it.date == LocalDate.of(2026, 6, 3) }.type)
         assertEquals(CalendarDayType.NORMAL, days.first { it.date == LocalDate.of(2026, 6, 17) }.type)
+    }
+
+    @Test
+    fun `fertility window returns three days before and after selected date`() {
+        val estimates = useCase.buildFertilityWindow(
+            settings = CycleSettings(
+                lastPeriodStart = LocalDate.of(2026, 7, 1),
+                cycleLength = 28,
+                periodLength = 5
+            ),
+            centerDate = LocalDate.of(2026, 7, 14),
+            today = LocalDate.of(2026, 7, 10)
+        )
+
+        assertEquals(LocalDate.of(2026, 7, 11), estimates.first().date)
+        assertEquals(LocalDate.of(2026, 7, 17), estimates.last().date)
+        assertEquals(7, estimates.size)
+        assertEquals(42, estimates.first { it.date == LocalDate.of(2026, 7, 14) }.probabilityPercent)
+        assertEquals(FertilityLevel.PEAK, estimates.first { it.date == LocalDate.of(2026, 7, 14) }.level)
+        assertEquals(10, estimates.first { it.date == LocalDate.of(2026, 7, 16) }.probabilityPercent)
     }
 }

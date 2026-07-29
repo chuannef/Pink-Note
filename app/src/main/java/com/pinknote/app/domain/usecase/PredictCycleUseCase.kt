@@ -132,6 +132,47 @@ class PredictCycleUseCase @Inject constructor() {
         }.toList()
     }
 
+    fun buildFertilityWindow(
+        settings: CycleSettings,
+        centerDate: LocalDate,
+        today: LocalDate = LocalDate.now(),
+        logs: List<DailyLog> = emptyList()
+    ): List<FertilityEstimate> {
+        val prediction = invoke(settings, today, logs)
+        val currentPeriodStart = prediction.nextPeriodStart.minusDays(prediction.weightedCycleLength.toLong())
+        return (-3..3).map { dayOffset ->
+            val date = centerDate.plusDays(dayOffset.toLong())
+            val ovulationDate = ovulationDateForCycleContaining(
+                date = date,
+                currentPeriodStart = currentPeriodStart,
+                cycleLength = prediction.weightedCycleLength
+            )
+            val ovulationOffset = ChronoUnit.DAYS.between(ovulationDate, date).toInt()
+            val probability = probabilityForOvulationOffset(ovulationOffset)
+            FertilityEstimate(
+                date = date,
+                probabilityPercent = probability,
+                level = fertilityLevel(probability, ovulationOffset)
+            )
+        }
+    }
+
+    private fun ovulationDateForCycleContaining(
+        date: LocalDate,
+        currentPeriodStart: LocalDate,
+        cycleLength: Int
+    ): LocalDate {
+        val cycleDays = cycleLength.toLong()
+        var nextPeriodStart = currentPeriodStart
+        while (!nextPeriodStart.isAfter(date)) {
+            nextPeriodStart = nextPeriodStart.plusDays(cycleDays)
+        }
+        while (nextPeriodStart.minusDays(cycleDays).isAfter(date)) {
+            nextPeriodStart = nextPeriodStart.minusDays(cycleDays)
+        }
+        return nextPeriodStart.minusDays(14)
+    }
+
     private fun buildPeriodStartsForCalendar(
         currentPeriodStart: LocalDate,
         cycleLength: Int,
