@@ -15,7 +15,8 @@ import javax.inject.Inject
 data class AuthUiState(
     val isLoading: Boolean = false,
     val isAuthenticated: Boolean = false,
-    val message: String? = null
+    val message: String? = null,
+    val isMessageError: Boolean = false
 )
 
 @HiltViewModel
@@ -45,7 +46,7 @@ class AuthViewModel @Inject constructor(
             _uiState.value = AuthUiState(isLoading = true)
             when (val result = authRepository.loginWithEmail(email.trim(), password)) {
                 is AppResult.Success -> _uiState.value = AuthUiState(isAuthenticated = true)
-                is AppResult.Error -> _uiState.value = AuthUiState(message = result.message)
+                is AppResult.Error -> _uiState.value = AuthUiState(message = result.message, isMessageError = true)
                 AppResult.Loading -> Unit
             }
         }
@@ -56,7 +57,7 @@ class AuthViewModel @Inject constructor(
             _uiState.value = AuthUiState(isLoading = true)
             when (val result = authRepository.registerWithEmail(name.trim(), email.trim(), password)) {
                 is AppResult.Success -> _uiState.value = AuthUiState(isAuthenticated = true)
-                is AppResult.Error -> _uiState.value = AuthUiState(message = result.message)
+                is AppResult.Error -> _uiState.value = AuthUiState(message = result.message, isMessageError = true)
                 AppResult.Loading -> Unit
             }
         }
@@ -67,22 +68,41 @@ class AuthViewModel @Inject constructor(
             _uiState.value = AuthUiState(isLoading = true)
             when (val result = authRepository.loginWithGoogle(idToken)) {
                 is AppResult.Success -> _uiState.value = AuthUiState(isAuthenticated = true)
-                is AppResult.Error -> _uiState.value = AuthUiState(message = result.message)
+                is AppResult.Error -> _uiState.value = AuthUiState(message = result.message, isMessageError = true)
                 AppResult.Loading -> Unit
             }
         }
     }
 
     fun showAuthError(message: String) {
-        _uiState.value = _uiState.value.copy(isLoading = false, message = message)
+        _uiState.value = _uiState.value.copy(isLoading = false, message = message, isMessageError = true)
     }
 
     fun resetPassword(email: String) {
+        val normalizedEmail = email.trim()
+        val validationMessage = validatePasswordResetEmail(normalizedEmail)
+        if (validationMessage != null) {
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                message = validationMessage,
+                isMessageError = true
+            )
+            return
+        }
+
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
-            when (val result = authRepository.sendPasswordReset(email.trim())) {
-                is AppResult.Success -> _uiState.value = _uiState.value.copy(isLoading = false, message = "Đã gửi email đặt lại mật khẩu")
-                is AppResult.Error -> _uiState.value = _uiState.value.copy(isLoading = false, message = result.message)
+            when (val result = authRepository.sendPasswordReset(normalizedEmail)) {
+                is AppResult.Success -> _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    message = passwordResetSentMessage(normalizedEmail),
+                    isMessageError = false
+                )
+                is AppResult.Error -> _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    message = result.message,
+                    isMessageError = true
+                )
                 AppResult.Loading -> Unit
             }
         }

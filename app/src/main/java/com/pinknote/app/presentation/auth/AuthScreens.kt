@@ -35,6 +35,8 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -89,6 +91,9 @@ fun LoginScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var localError by remember { mutableStateOf<String?>(null) }
+    var showResetDialog by remember { mutableStateOf(false) }
+    var resetEmail by remember { mutableStateOf("") }
+    var resetEmailError by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val googleClient = remember {
         GoogleSignIn.getClient(
@@ -178,7 +183,11 @@ fun LoginScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(onClick = { viewModel.resetPassword(email) }) {
+            TextButton(onClick = {
+                resetEmail = email
+                resetEmailError = null
+                showResetDialog = true
+            }) {
                 Text(strings.forgotPassword)
             }
             TextButton(onClick = onRegister) {
@@ -187,9 +196,76 @@ fun LoginScreen(
         }
         AuthStatus(
             isLoading = uiState.isLoading,
-            message = localError ?: uiState.message
+            message = localError ?: uiState.message,
+            isError = localError != null || uiState.isMessageError
         )
     }
+
+    if (showResetDialog) {
+        PasswordResetDialog(
+            email = resetEmail,
+            emailError = resetEmailError,
+            isLoading = uiState.isLoading,
+            onEmailChange = {
+                resetEmail = it
+                resetEmailError = null
+            },
+            onDismiss = { showResetDialog = false },
+            onSubmit = {
+                resetEmailError = validatePasswordResetEmail(resetEmail)
+                if (resetEmailError == null) {
+                    email = resetEmail.trim()
+                    showResetDialog = false
+                    viewModel.resetPassword(resetEmail)
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun PasswordResetDialog(
+    email: String,
+    emailError: String?,
+    isLoading: Boolean,
+    onEmailChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onSubmit: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = {
+            if (!isLoading) onDismiss()
+        },
+        title = { Text("Đặt lại mật khẩu") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    "Nhập email đã đăng ký. PinkNote sẽ gửi email chứa mã/link đặt lại mật khẩu để bạn tạo mật khẩu mới.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                PinkTextField(
+                    value = email,
+                    onValueChange = onEmailChange,
+                    label = "Email đã đăng ký",
+                    leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                )
+                emailError?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onSubmit, enabled = !isLoading) {
+                Text("Gửi email")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isLoading) {
+                Text("Hủy")
+            }
+        }
+    )
 }
 
 @Composable
@@ -264,7 +340,8 @@ fun RegisterScreen(
         }
         AuthStatus(
             isLoading = uiState.isLoading,
-            message = localError ?: uiState.message
+            message = localError ?: uiState.message,
+            isError = localError != null || uiState.isMessageError
         )
     }
 }
@@ -521,7 +598,7 @@ private fun PinkTextField(
 }
 
 @Composable
-private fun AuthStatus(isLoading: Boolean, message: String?) {
+private fun AuthStatus(isLoading: Boolean, message: String?, isError: Boolean) {
     val strings = LocalAppStrings.current
     if (isLoading) {
         Row(
@@ -542,15 +619,16 @@ private fun AuthStatus(isLoading: Boolean, message: String?) {
         }
     }
     message?.let {
+        val messageColor = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.error.copy(alpha = 0.08f),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.2f))
+            color = messageColor.copy(alpha = 0.08f),
+            border = BorderStroke(1.dp, messageColor.copy(alpha = 0.2f))
         ) {
             Text(
                 text = it,
-                color = MaterialTheme.colorScheme.error,
+                color = messageColor,
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
             )

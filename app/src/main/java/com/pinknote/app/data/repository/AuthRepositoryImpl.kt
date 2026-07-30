@@ -66,7 +66,13 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun sendPasswordReset(email: String): AppResult<Unit> {
         return runCatching { firebaseDataSource.sendPasswordReset(email) }.fold(
             onSuccess = { AppResult.Success(Unit) },
-            onFailure = { AppResult.Error(it.toAuthMessage("Không thể gửi email đặt lại mật khẩu"), it) }
+            onFailure = {
+                if ((it as? FirebaseAuthException)?.errorCode == "ERROR_USER_NOT_FOUND") {
+                    AppResult.Success(Unit)
+                } else {
+                    AppResult.Error(it.toAuthMessage("Không thể gửi email đặt lại mật khẩu"), it)
+                }
+            }
         )
     }
 
