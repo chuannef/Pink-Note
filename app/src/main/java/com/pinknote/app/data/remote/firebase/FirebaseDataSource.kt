@@ -14,6 +14,7 @@ import com.pinknote.app.utils.DateUtils.toStorageString
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
@@ -81,7 +82,43 @@ class FirebaseDataSource @Inject constructor(
     }
 
     suspend fun deleteAccount() {
-        auth.currentUser?.delete()?.await()
+        val user = auth.currentUser ?: return
+        deleteUserData(user.uid)
+        user.delete().await()
+        runCatching { googleSignInClient.signOut().await() }
+    }
+
+    suspend fun deleteUserData(uid: String) {
+        deleteCollectionDocuments(
+            firestore.collection(Constants.DAILY_LOGS_COLLECTION)
+                .document(uid)
+                .collection(DAILY_LOG_DAYS_SUBCOLLECTION)
+        )
+        deleteCollectionDocuments(
+            firestore.collection(Constants.NOTIFICATIONS_COLLECTION)
+                .document(uid)
+                .collection(NOTIFICATION_ITEMS_SUBCOLLECTION)
+        )
+
+        val batch = firestore.batch()
+        batch.delete(firestore.collection(Constants.USERS_COLLECTION).document(uid))
+        batch.delete(firestore.collection(Constants.CYCLE_COLLECTION).document(uid))
+        batch.delete(firestore.collection(Constants.DAILY_LOGS_COLLECTION).document(uid))
+        batch.delete(firestore.collection(Constants.NOTIFICATIONS_COLLECTION).document(uid))
+        batch.commit().await()
+    }
+
+    private suspend fun deleteCollectionDocuments(collection: CollectionReference) {
+        while (true) {
+            val snapshot = collection.limit(FIRESTORE_DELETE_BATCH_SIZE).get().await()
+            if (snapshot.isEmpty) return
+
+            val batch = firestore.batch()
+            snapshot.documents.forEach { document ->
+                batch.delete(document.reference)
+            }
+            batch.commit().await()
+        }
     }
 
     private suspend fun resolveAuthProfile(
@@ -260,5 +297,11 @@ class FirebaseDataSource @Inject constructor(
             lastAccessAtEpochMillis = (this["lastAccessAt"] as? Number)?.toLong(),
             createdAtEpochMillis = (this["createdAt"] as? Number)?.toLong() ?: System.currentTimeMillis()
         )
+    }
+
+    private companion object {
+        const val DAILY_LOG_DAYS_SUBCOLLECTION = "days"
+        const val NOTIFICATION_ITEMS_SUBCOLLECTION = "items"
+        const val FIRESTORE_DELETE_BATCH_SIZE = 450L
     }
 }

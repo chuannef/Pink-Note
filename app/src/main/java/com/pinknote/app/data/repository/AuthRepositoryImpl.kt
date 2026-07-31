@@ -1,10 +1,14 @@
 package com.pinknote.app.data.repository
 
+import com.pinknote.app.data.local.dao.CycleDao
+import com.pinknote.app.data.local.dao.DailyLogDao
+import com.pinknote.app.data.local.dao.ReminderDao
 import com.pinknote.app.data.local.dao.UserDao
 import com.pinknote.app.data.remote.firebase.FirebaseDataSource
 import com.pinknote.app.domain.model.AppResult
 import com.pinknote.app.domain.model.UserProfile
 import com.pinknote.app.domain.repository.AuthRepository
+import com.pinknote.app.worker.ReminderScheduler
 import com.google.firebase.FirebaseNetworkException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthException
@@ -18,7 +22,11 @@ import javax.inject.Singleton
 class AuthRepositoryImpl @Inject constructor(
     private val auth: FirebaseAuth,
     private val firebaseDataSource: FirebaseDataSource,
-    private val userDao: UserDao
+    private val userDao: UserDao,
+    private val cycleDao: CycleDao,
+    private val dailyLogDao: DailyLogDao,
+    private val reminderDao: ReminderDao,
+    private val reminderScheduler: ReminderScheduler
 ) : AuthRepository {
     override val currentUser: Flow<UserProfile?> = callbackFlow {
         val listener = FirebaseAuth.AuthStateListener { firebaseAuth ->
@@ -81,10 +89,24 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteAccount(): AppResult<Unit> {
-        return runCatching { firebaseDataSource.deleteAccount() }.fold(
+        return runCatching {
+            val uid = auth.currentUser?.uid
+            firebaseDataSource.deleteAccount()
+            if (uid != null) {
+                deleteLocalUserData(uid)
+            }
+        }.fold(
             onSuccess = { AppResult.Success(Unit) },
             onFailure = { AppResult.Error(it.toAuthMessage("Không thể xóa tài khoản"), it) }
         )
+    }
+
+    private suspend fun deleteLocalUserData(uid: String) {
+        reminderDao.getIdsByUid(uid).forEach(reminderScheduler::cancel)
+        reminderDao.deleteByUid(uid)
+        dailyLogDao.deleteByUid(uid)
+        cycleDao.deleteByUid(uid)
+        userDao.deleteByUid(uid)
     }
 
     private fun Throwable.toAuthMessage(fallback: String): String {
@@ -102,6 +124,7 @@ class AuthRepositoryImpl @Inject constructor(
             "ERROR_INVALID_EMAIL" -> "Email không hợp lệ."
             "ERROR_WEAK_PASSWORD" -> "Mật khẩu quá yếu, hãy nhập ít nhất 6 ký tự."
             "ERROR_WRONG_PASSWORD", "ERROR_INVALID_CREDENTIAL" -> "Email hoặc mật khẩu không đúng."
+            "ERROR_REQUIRES_RECENT_LOGIN" -> "Vì lý do bảo mật, hãy đăng xuất rồi đăng nhập lại trước khi xóa tài khoản."
             "ERROR_USER_NOT_FOUND" -> "Tài khoản không tồn tại."
             else -> message ?: fallback
         }

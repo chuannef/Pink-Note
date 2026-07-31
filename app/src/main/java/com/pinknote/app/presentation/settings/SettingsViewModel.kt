@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pinknote.app.domain.model.AppLanguage
 import com.pinknote.app.domain.model.AppSettings
+import com.pinknote.app.domain.model.AppResult
 import com.pinknote.app.domain.model.ThemeMode
 import com.pinknote.app.domain.repository.AuthRepository
 import com.pinknote.app.domain.repository.SettingsRepository
@@ -34,6 +35,12 @@ class SettingsViewModel @Inject constructor(
 
     private val _logoutCompleted = MutableStateFlow(false)
     val logoutCompleted: StateFlow<Boolean> = _logoutCompleted.asStateFlow()
+
+    private val _isDeletingAccount = MutableStateFlow(false)
+    val isDeletingAccount: StateFlow<Boolean> = _isDeletingAccount.asStateFlow()
+
+    private val _deleteAccountMessage = MutableStateFlow<String?>(null)
+    val deleteAccountMessage: StateFlow<String?> = _deleteAccountMessage.asStateFlow()
 
     val settings: StateFlow<AppSettings> = settingsRepository.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettings())
@@ -87,7 +94,23 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun deleteAccount() {
-        viewModelScope.launch { authRepository.deleteAccount() }
+        if (_isDeletingAccount.value) return
+
+        viewModelScope.launch {
+            _isDeletingAccount.value = true
+            _deleteAccountMessage.value = null
+            when (val result = authRepository.deleteAccount()) {
+                is AppResult.Success -> {
+                    _isDeletingAccount.value = false
+                    _logoutCompleted.value = true
+                }
+                is AppResult.Error -> {
+                    _isDeletingAccount.value = false
+                    _deleteAccountMessage.value = result.message
+                }
+                AppResult.Loading -> Unit
+            }
+        }
     }
 
     private fun save(appSettings: AppSettings) {

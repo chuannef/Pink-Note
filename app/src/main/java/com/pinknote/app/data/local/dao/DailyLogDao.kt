@@ -16,4 +16,7 @@ interface DailyLogDao {
 
     @Upsert
     suspend fun upsert(log: DailyLogEntity)
+
+    @Query("DELETE FROM daily_logs WHERE uid = :uid")
+    suspend fun deleteByUid(uid: String)
 }

@@ -13,4 +13,7 @@ interface CycleDao {
 
     @Upsert
     suspend fun upsert(cycle: CycleEntity)
+
+    @Query("DELETE FROM cycle WHERE uid = :uid")
+    suspend fun deleteByUid(uid: String)
 }

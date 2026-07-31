@@ -14,6 +14,12 @@ interface ReminderDao {
     @Upsert
     suspend fun upsert(reminder: ReminderEntity)
 
+    @Query("SELECT id FROM notifications WHERE uid = :uid")
+    suspend fun getIdsByUid(uid: String): List<String>
+
     @Query("DELETE FROM notifications WHERE id = :reminderId")
     suspend fun delete(reminderId: String)
+
+    @Query("DELETE FROM notifications WHERE uid = :uid")
+    suspend fun deleteByUid(uid: String)
 }
