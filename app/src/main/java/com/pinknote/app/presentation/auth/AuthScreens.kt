@@ -3,8 +3,18 @@ package com.pinknote.app.presentation.auth
 import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -20,9 +30,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,23 +44,27 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -59,7 +76,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -75,15 +94,15 @@ import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.CommonStatusCodes
 import com.pinknote.app.R
 import com.pinknote.app.domain.model.AppLanguage
-import com.pinknote.app.presentation.common.PinkPage
 import com.pinknote.app.presentation.common.PinkPrimaryButton
 import com.pinknote.app.presentation.localization.AppStrings
 import com.pinknote.app.presentation.localization.LocalAppStrings
+import com.pinknote.app.presentation.localization.languageLabel
 import com.pinknote.app.presentation.settings.SettingsViewModel
 import com.pinknote.app.presentation.theme.BlushSurface
 import com.pinknote.app.presentation.theme.CreamWhite
 import com.pinknote.app.presentation.theme.PastelPink
-import com.pinknote.app.presentation.theme.RoseDeep
+import com.pinknote.app.presentation.theme.PetalMist
 
 @Composable
 fun LoginScreen(
@@ -142,8 +161,10 @@ fun LoginScreen(
     }
 
     AuthFormScaffold(
+        authMode = AuthMode.Login,
         title = strings.loginTitle,
         subtitle = strings.loginSubtitle,
+        onModeSwitch = onRegister,
         heroAction = {
             LanguageSelector(
                 selectedLanguage = settings.language,
@@ -193,7 +214,7 @@ fun LoginScreen(
         )
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
             TextButton(onClick = {
@@ -202,9 +223,6 @@ fun LoginScreen(
                 showResetDialog = true
             }) {
                 Text(strings.forgotPassword)
-            }
-            TextButton(onClick = onRegister) {
-                Text(strings.createAccount)
             }
         }
         AuthStatus(
@@ -251,6 +269,9 @@ private fun PasswordResetDialog(
         onDismissRequest = {
             if (!isLoading) onDismiss()
         },
+        shape = RoundedCornerShape(28.dp),
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
         title = { Text(strings.passwordResetTitle) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -301,8 +322,10 @@ fun RegisterScreen(
     }
 
     AuthFormScaffold(
+        authMode = AuthMode.Register,
         title = strings.registerTitle,
-        subtitle = strings.registerSubtitle
+        subtitle = strings.registerSubtitle,
+        onModeSwitch = onLogin
     ) {
         PinkTextField(
             value = name,
@@ -347,12 +370,6 @@ fun RegisterScreen(
             Spacer(Modifier.width(8.dp))
             Icon(Icons.Default.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
         }
-        TextButton(
-            onClick = onLogin,
-            modifier = Modifier.align(Alignment.CenterHorizontally)
-        ) {
-            Text(strings.alreadyHaveAccount)
-        }
         AuthStatus(
             isLoading = uiState.isLoading,
             message = localError ?: uiState.message,
@@ -381,36 +398,177 @@ private fun Throwable.toGoogleSignInMessage(strings: AppStrings): String {
     }
 }
 
+private enum class AuthMode {
+    Login,
+    Register
+}
+
 @Composable
 private fun AuthFormScaffold(
+    authMode: AuthMode,
     title: String,
     subtitle: String,
+    onModeSwitch: () -> Unit,
     heroAction: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    PinkPage {
+    var formVisible by remember(authMode) { mutableStateOf(false) }
+
+    LaunchedEffect(authMode) {
+        formVisible = true
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        PetalMist,
+                        BlushSurface,
+                        MaterialTheme.colorScheme.background,
+                        CreamWhite
+                    )
+                )
+            )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(210.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            PastelPink.copy(alpha = 0.24f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.SpaceBetween
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 18.dp, vertical = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             AuthHero(title = title, subtitle = subtitle, action = heroAction)
-            Spacer(Modifier.height(18.dp))
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(32.dp),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.48f)),
-                shadowElevation = 12.dp
+
+            AnimatedVisibility(
+                visible = formVisible,
+                enter = fadeIn(animationSpec = tween(420, easing = FastOutSlowInEasing)) +
+                    slideInVertically(animationSpec = tween(420, easing = FastOutSlowInEasing)) { it / 8 } +
+                    scaleIn(initialScale = 0.98f, animationSpec = tween(420, easing = FastOutSlowInEasing)),
+                exit = fadeOut(animationSpec = tween(180)) + scaleOut(targetScale = 0.98f)
             ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
-                    content = content
-                )
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(30.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.32f)),
+                    shadowElevation = 18.dp
+                ) {
+                    Column(
+                        modifier = Modifier.padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.CenterHorizontally)
+                                .size(width = 44.dp, height = 4.dp)
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
+                        )
+                        AuthModeTabs(
+                            selectedMode = authMode,
+                            onSwitchMode = onModeSwitch
+                        )
+                        content()
+                    }
+                }
             }
             Spacer(Modifier.height(18.dp))
+        }
+    }
+}
+
+@Composable
+private fun AuthModeTabs(
+    selectedMode: AuthMode,
+    onSwitchMode: () -> Unit
+) {
+    val strings = LocalAppStrings.current
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        color = BlushSurface.copy(alpha = 0.58f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.28f))
+    ) {
+        Row(
+            modifier = Modifier.padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            AuthModeTab(
+                text = strings.login,
+                selected = selectedMode == AuthMode.Login,
+                onClick = {
+                    if (selectedMode != AuthMode.Login) onSwitchMode()
+                },
+                modifier = Modifier.weight(1f)
+            )
+            AuthModeTab(
+                text = strings.register,
+                selected = selectedMode == AuthMode.Register,
+                onClick = {
+                    if (selectedMode != AuthMode.Register) onSwitchMode()
+                },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun AuthModeTab(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val backgroundColor by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.surface else Color.Transparent,
+        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+        label = "auth_tab_background"
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+        label = "auth_tab_content"
+    )
+    val elevation by animateDpAsState(
+        targetValue = if (selected) 5.dp else 0.dp,
+        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+        label = "auth_tab_elevation"
+    )
+
+    Surface(
+        modifier = modifier.height(44.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = backgroundColor,
+        shadowElevation = elevation
+    ) {
+        TextButton(
+            onClick = onClick,
+            modifier = Modifier.fillMaxSize(),
+            colors = ButtonDefaults.textButtonColors(contentColor = contentColor)
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1
+            )
         }
     }
 }
@@ -451,24 +609,26 @@ private fun AuthHero(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
+                        .size(56.dp)
                         .graphicsLayer {
                             scaleX = iconScale
                             scaleY = iconScale
                         }
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(RoundedCornerShape(18.dp))
                         .background(
                             Brush.linearGradient(
-                                colors = listOf(PastelPink, RoseDeep)
+                                colors = listOf(CreamWhite, PastelPink.copy(alpha = 0.42f))
                             )
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Favorite,
+                    Image(
+                        painter = painterResource(R.drawable.app_icon),
                         contentDescription = null,
-                        tint = CreamWhite,
-                        modifier = Modifier.size(24.dp)
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(RoundedCornerShape(14.dp))
                     )
                 }
                 Column {
@@ -492,7 +652,7 @@ private fun AuthHero(
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.displaySmall,
+                style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
@@ -559,33 +719,102 @@ private fun AuthFeatureChip(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LanguageSelector(
     selectedLanguage: AppLanguage,
     onLanguageSelected: (AppLanguage) -> Unit
 ) {
+    val strings = LocalAppStrings.current
+    var showSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
     Surface(
         shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.48f))
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically
+        TextButton(
+            onClick = { showSheet = true },
+            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary)
         ) {
-            AppLanguage.entries.forEach { language ->
-                FilterChip(
-                    selected = selectedLanguage == language,
-                    onClick = { onLanguageSelected(language) },
-                    label = {
-                        Text(
-                            text = language.name,
-                            style = MaterialTheme.typography.labelMedium,
-                            maxLines = 1
-                        )
-                    }
+            Text(
+                text = strings.languageLabel(selectedLanguage),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1
+            )
+            Spacer(Modifier.width(4.dp))
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowDown,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+
+    if (showSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showSheet = false },
+            sheetState = sheetState,
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+            containerColor = MaterialTheme.colorScheme.surface
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    text = strings.language,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 260.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(AppLanguage.entries) { language ->
+                        val selected = selectedLanguage == language
+                        TextButton(
+                            onClick = {
+                                onLanguageSelected(language)
+                                showSheet = false
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp),
+                            shape = RoundedCornerShape(18.dp),
+                            colors = ButtonDefaults.textButtonColors(
+                                containerColor = if (selected) BlushSurface else Color.Transparent,
+                                contentColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = strings.languageLabel(language),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                                )
+                                if (selected) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                } else {
+                                    Spacer(Modifier.size(20.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
             }
         }
     }
@@ -664,7 +893,13 @@ private fun PinkTextField(
 @Composable
 private fun AuthStatus(isLoading: Boolean, message: String?, isError: Boolean) {
     val strings = LocalAppStrings.current
-    if (isLoading) {
+    AnimatedVisibility(
+        visible = isLoading,
+        enter = fadeIn(animationSpec = tween(180)) +
+            slideInVertically(animationSpec = tween(220, easing = FastOutSlowInEasing)) { it / 3 },
+        exit = fadeOut(animationSpec = tween(140)) +
+            slideOutVertically(animationSpec = tween(140)) { it / 4 }
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center,
@@ -682,7 +917,13 @@ private fun AuthStatus(isLoading: Boolean, message: String?, isError: Boolean) {
             )
         }
     }
-    message?.let {
+
+    AnimatedVisibility(
+        visible = message != null,
+        enter = fadeIn(animationSpec = tween(180)) +
+            slideInVertically(animationSpec = tween(220, easing = FastOutSlowInEasing)) { it / 3 },
+        exit = fadeOut(animationSpec = tween(140))
+    ) {
         val messageColor = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
         Surface(
             modifier = Modifier.fillMaxWidth(),
@@ -691,7 +932,7 @@ private fun AuthStatus(isLoading: Boolean, message: String?, isError: Boolean) {
             border = BorderStroke(1.dp, messageColor.copy(alpha = 0.2f))
         ) {
             Text(
-                text = it,
+                text = message.orEmpty(),
                 color = messageColor,
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
