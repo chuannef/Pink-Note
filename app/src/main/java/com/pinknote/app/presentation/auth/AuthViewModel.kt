@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.pinknote.app.domain.model.AppResult
 import com.pinknote.app.domain.repository.AuthRepository
 import com.pinknote.app.domain.repository.UserRepository
+import com.pinknote.app.presentation.localization.AppStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -78,9 +79,9 @@ class AuthViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(isLoading = false, message = message, isMessageError = true)
     }
 
-    fun resetPassword(email: String) {
+    fun resetPassword(email: String, strings: AppStrings) {
         val normalizedEmail = email.trim()
-        val validationMessage = validatePasswordResetEmail(normalizedEmail)
+        val validationMessage = validatePasswordResetEmail(normalizedEmail, strings)
         if (validationMessage != null) {
             _uiState.value = _uiState.value.copy(
                 isLoading = false,
@@ -95,7 +96,7 @@ class AuthViewModel @Inject constructor(
             when (val result = authRepository.sendPasswordReset(normalizedEmail)) {
                 is AppResult.Success -> _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    message = passwordResetSentMessage(normalizedEmail),
+                    message = passwordResetSentMessage(normalizedEmail, strings),
                     isMessageError = false
                 )
                 is AppResult.Error -> _uiState.value = _uiState.value.copy(

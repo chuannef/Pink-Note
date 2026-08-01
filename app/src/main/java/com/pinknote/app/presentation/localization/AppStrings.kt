@@ -77,7 +77,34 @@ data class AppStrings(
     val privacy: String,
     val easyTracking: String,
     val personal: String,
-    val processing: String
+    val processing: String,
+    val languageVietnamese: String,
+    val languageEnglish: String,
+    val passwordResetTitle: String,
+    val passwordResetBody: String,
+    val registeredEmail: String,
+    val sendEmail: String,
+    val cancel: String,
+    val nameRequired: String,
+    val emailRequired: String,
+    val registeredEmailRequired: String,
+    val invalidEmail: String,
+    val passwordTooShort: String,
+    val passwordResetSentMessage: String,
+    val googleMissingIdToken: String,
+    val googleNoTokenWithResultCode: String,
+    val googleConfigError: String,
+    val googleNetworkError: String,
+    val googleSignInCancelled: String,
+    val googleSignInInProgress: String,
+    val googleSignInFailed: String,
+    val googleSignInFailedWithCode: String,
+    val deleteAccountConfirmTitle: String,
+    val deleteAccountConfirmBody: String,
+    val deleteAccountConfirmInstruction: String,
+    val deleteAccountPermanent: String,
+    val openSourceLibraries: String,
+    val privacyPolicyBody: String
 )
 
 val LocalAppStrings = staticCompositionLocalOf { viStrings }
@@ -89,9 +116,16 @@ fun appStrings(language: AppLanguage): AppStrings {
     }
 }
 
+fun AppStrings.languageLabel(language: AppLanguage): String {
+    return when (language) {
+        AppLanguage.VI -> languageVietnamese
+        AppLanguage.EN -> languageEnglish
+    }
+}
+
 private val viStrings = AppStrings(
     languageCode = AppLanguage.VI,
-    home = "Home",
+    home = "Trang chủ",
     calendar = "Lịch",
     reminders = "Nhắc",
     profile = "Hồ sơ",
@@ -140,11 +174,11 @@ private val viStrings = AppStrings(
     sendPasswordEmail = "Gửi email đổi mật khẩu",
     logout = "Đăng xuất",
     deleteAccount = "Xóa tài khoản",
-    about = "About PinkNote",
-    version = "Version",
-    developer = "Developer",
-    contact = "Contact",
-    medicalDisclaimer = "Medical Disclaimer",
+    about = "Về PinkNote",
+    version = "Phiên bản",
+    developer = "Nhà phát triển",
+    contact = "Liên hệ",
+    medicalDisclaimer = "Lưu ý y tế",
     medicalDisclaimerBody = "This application is intended for educational and personal health tracking purposes only.\n\nIt does not provide medical diagnosis, treatment, or professional medical advice.\n\nPredictions of menstruation, ovulation, and fertility are estimates based on user-entered data and statistical models.\n\nThe application should not be used as a method of contraception or pregnancy planning.\n\nPlease consult a qualified healthcare professional for any medical concerns.",
     loginTitle = "Chào mừng trở lại",
     loginSubtitle = "Tiếp tục theo dõi chu kỳ, nhật ký sức khỏe và các nhắc nhở quan trọng của bạn.",
@@ -163,7 +197,34 @@ private val viStrings = AppStrings(
     privacy = "Riêng tư",
     easyTracking = "Dễ theo dõi",
     personal = "Cá nhân",
-    processing = "Đang xử lý"
+    processing = "Đang xử lý",
+    languageVietnamese = "Tiếng Việt",
+    languageEnglish = "English",
+    passwordResetTitle = "Đặt lại mật khẩu",
+    passwordResetBody = "Nhập email đã đăng ký. PinkNote sẽ gửi email chứa mã/link đặt lại mật khẩu để bạn tạo mật khẩu mới.",
+    registeredEmail = "Email đã đăng ký",
+    sendEmail = "Gửi email",
+    cancel = "Hủy",
+    nameRequired = "Hãy nhập tên của bạn.",
+    emailRequired = "Hãy nhập email.",
+    registeredEmailRequired = "Hãy nhập email đã đăng ký.",
+    invalidEmail = "Email chưa đúng định dạng.",
+    passwordTooShort = "Mật khẩu cần ít nhất 6 ký tự.",
+    passwordResetSentMessage = "Nếu %s đã đăng ký PinkNote, email đặt lại mật khẩu đã được gửi. Hãy kiểm tra Hộp thư đến hoặc Spam.",
+    googleMissingIdToken = "Không lấy được Google ID token. Hãy kiểm tra SHA-1/SHA-256 trong Firebase và tải lại google-services.json.",
+    googleNoTokenWithResultCode = "Google chưa trả token cho app (resultCode=%d). Hãy kiểm tra provider Google, SHA-1/SHA-256 và tải lại google-services.json.",
+    googleConfigError = "Google Sign-In lỗi cấu hình. Hãy thêm SHA-1/SHA-256 debug vào Firebase, tải lại google-services.json rồi cài lại app.",
+    googleNetworkError = "Không thể kết nối Google. Hãy kiểm tra internet, ngày giờ thiết bị và Google Play Services.",
+    googleSignInCancelled = "Bạn đã hủy đăng nhập Google.",
+    googleSignInInProgress = "Google Sign-In đang xử lý, hãy thử lại sau vài giây.",
+    googleSignInFailed = "Google Sign-In thất bại. Hãy kiểm tra SHA-1/SHA-256 và provider Google trong Firebase Authentication.",
+    googleSignInFailedWithCode = "Google Sign-In thất bại (mã %d: %s).",
+    deleteAccountConfirmTitle = "Xác nhận xóa tài khoản",
+    deleteAccountConfirmBody = "Thao tác này sẽ xóa tài khoản, hồ sơ, chu kỳ, nhật ký, nhắc nhở và dữ liệu đã đồng bộ của bạn. Không thể hoàn tác.",
+    deleteAccountConfirmInstruction = "Nhập %s để xác nhận.",
+    deleteAccountPermanent = "Xóa vĩnh viễn",
+    openSourceLibraries = "Thư viện mã nguồn mở: Kotlin, Jetpack Compose, Hilt, Room, Firebase, WorkManager, MPAndroidChart.",
+    privacyPolicyBody = "Chính sách quyền riêng tư: dữ liệu cục bộ và dữ liệu Firebase được dùng cho tài khoản, chu kỳ, nhắc nhở và tính năng theo dõi sức khỏe cá nhân."
 )
 
 private val enStrings = AppStrings(
@@ -240,5 +301,32 @@ private val enStrings = AppStrings(
     privacy = "Private",
     easyTracking = "Easy tracking",
     personal = "Personal",
-    processing = "Processing"
+    processing = "Processing",
+    languageVietnamese = "Vietnamese",
+    languageEnglish = "English",
+    passwordResetTitle = "Reset password",
+    passwordResetBody = "Enter your registered email. PinkNote will send an email with a reset code/link so you can create a new password.",
+    registeredEmail = "Registered email",
+    sendEmail = "Send email",
+    cancel = "Cancel",
+    nameRequired = "Enter your name.",
+    emailRequired = "Enter your email.",
+    registeredEmailRequired = "Enter your registered email.",
+    invalidEmail = "Email format is invalid.",
+    passwordTooShort = "Password must be at least 6 characters.",
+    passwordResetSentMessage = "If %s is registered with PinkNote, a password reset email has been sent. Check your Inbox or Spam folder.",
+    googleMissingIdToken = "Could not get the Google ID token. Check SHA-1/SHA-256 in Firebase and download google-services.json again.",
+    googleNoTokenWithResultCode = "Google did not return a token for the app (resultCode=%d). Check the Google provider, SHA-1/SHA-256, and download google-services.json again.",
+    googleConfigError = "Google Sign-In is misconfigured. Add the debug SHA-1/SHA-256 to Firebase, download google-services.json again, then reinstall the app.",
+    googleNetworkError = "Could not connect to Google. Check your internet connection, device date/time, and Google Play Services.",
+    googleSignInCancelled = "You cancelled Google sign-in.",
+    googleSignInInProgress = "Google Sign-In is already in progress. Try again in a few seconds.",
+    googleSignInFailed = "Google Sign-In failed. Check SHA-1/SHA-256 and the Google provider in Firebase Authentication.",
+    googleSignInFailedWithCode = "Google Sign-In failed (code %d: %s).",
+    deleteAccountConfirmTitle = "Confirm account deletion",
+    deleteAccountConfirmBody = "This will delete your account, profile, cycle, journal, reminders, and synced data. This cannot be undone.",
+    deleteAccountConfirmInstruction = "Enter %s to confirm.",
+    deleteAccountPermanent = "Delete permanently",
+    openSourceLibraries = "Open-source libraries: Kotlin, Jetpack Compose, Hilt, Room, Firebase, WorkManager, MPAndroidChart.",
+    privacyPolicyBody = "Privacy policy: local app data and Firebase data are used for account, cycle, reminder, and personal health tracking features."
 )

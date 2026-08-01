@@ -35,6 +35,7 @@ import com.pinknote.app.domain.model.ThemeMode
 import com.pinknote.app.presentation.common.PinkCard
 import com.pinknote.app.presentation.localization.AppStrings
 import com.pinknote.app.presentation.localization.LocalAppStrings
+import com.pinknote.app.presentation.localization.languageLabel
 import com.pinknote.app.utils.Constants
 
 @Composable
@@ -84,7 +85,7 @@ fun SettingsScreen(
                 FilterChip(
                     selected = settings.language == language,
                     onClick = { viewModel.setLanguage(language) },
-                    label = { Text(if (language == AppLanguage.VI) "Tiếng Việt" else "English") }
+                    label = { Text(strings.languageLabel(language)) }
                 )
             }
         }
@@ -159,19 +160,21 @@ private fun DeleteAccountConfirmationDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
+    val strings = LocalAppStrings.current
+
     AlertDialog(
         onDismissRequest = {
             if (!isDeleting) onDismiss()
         },
-        title = { Text("Xác nhận xóa tài khoản") },
+        title = { Text(strings.deleteAccountConfirmTitle) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    "Thao tác này sẽ xóa tài khoản, hồ sơ, chu kỳ, nhật ký, nhắc nhở và dữ liệu đã đồng bộ của bạn. Không thể hoàn tác.",
+                    strings.deleteAccountConfirmBody,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    "Nhập $DELETE_ACCOUNT_CONFIRMATION_TEXT để xác nhận.",
+                    strings.deleteAccountConfirmInstruction.format(DELETE_ACCOUNT_CONFIRMATION_TEXT),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -192,12 +195,12 @@ private fun DeleteAccountConfirmationDialog(
                     contentColor = MaterialTheme.colorScheme.onError
                 )
             ) {
-                Text("Xóa vĩnh viễn")
+                Text(strings.deleteAccountPermanent)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss, enabled = !isDeleting) {
-                Text("Hủy")
+                Text(strings.cancel)
             }
         }
     )
@@ -219,11 +222,8 @@ private fun AboutPinkNoteCard() {
         Text("${strings.version}: ${Constants.APP_VERSION}", style = MaterialTheme.typography.bodyMedium)
         Text("${strings.developer}: ${Constants.DEVELOPER_NAME}", style = MaterialTheme.typography.bodyMedium)
         Text("${strings.contact}: ${Constants.SUPPORT_EMAIL}", style = MaterialTheme.typography.bodyMedium)
-        Text(Constants.PRIVACY_POLICY, style = MaterialTheme.typography.bodyMedium)
-        Text(
-            "Open-source libraries: Kotlin, Jetpack Compose, Hilt, Room, Firebase, WorkManager, MPAndroidChart.",
-            style = MaterialTheme.typography.bodyMedium
-        )
+        Text(strings.privacyPolicyBody, style = MaterialTheme.typography.bodyMedium)
+        Text(strings.openSourceLibraries, style = MaterialTheme.typography.bodyMedium)
         Text(strings.medicalDisclaimer, style = MaterialTheme.typography.titleSmall)
         Text(
             strings.medicalDisclaimerBody,

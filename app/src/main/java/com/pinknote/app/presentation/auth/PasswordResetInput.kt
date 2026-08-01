@@ -1,14 +1,16 @@
 package com.pinknote.app.presentation.auth
 
-internal fun validatePasswordResetEmail(email: String): String? {
+import com.pinknote.app.presentation.localization.AppStrings
+
+internal fun validatePasswordResetEmail(email: String, strings: AppStrings): String? {
     val normalizedEmail = email.trim()
     return when {
-        normalizedEmail.isBlank() -> "Hãy nhập email đã đăng ký."
-        !normalizedEmail.contains("@") -> "Email chưa đúng định dạng."
+        normalizedEmail.isBlank() -> strings.registeredEmailRequired
+        !normalizedEmail.contains("@") -> strings.invalidEmail
         else -> null
     }
 }
 
-internal fun passwordResetSentMessage(email: String): String {
-    return "Nếu ${email.trim()} đã đăng ký PinkNote, email đặt lại mật khẩu đã được gửi. Hãy kiểm tra Hộp thư đến hoặc Spam."
+internal fun passwordResetSentMessage(email: String, strings: AppStrings): String {
+    return strings.passwordResetSentMessage.format(email.trim())
 }

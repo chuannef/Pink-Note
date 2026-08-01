@@ -39,6 +39,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -64,6 +65,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -72,9 +74,12 @@ import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.CommonStatusCodes
 import com.pinknote.app.R
+import com.pinknote.app.domain.model.AppLanguage
 import com.pinknote.app.presentation.common.PinkPage
 import com.pinknote.app.presentation.common.PinkPrimaryButton
+import com.pinknote.app.presentation.localization.AppStrings
 import com.pinknote.app.presentation.localization.LocalAppStrings
+import com.pinknote.app.presentation.settings.SettingsViewModel
 import com.pinknote.app.presentation.theme.BlushSurface
 import com.pinknote.app.presentation.theme.CreamWhite
 import com.pinknote.app.presentation.theme.PastelPink
@@ -84,10 +89,12 @@ import com.pinknote.app.presentation.theme.RoseDeep
 fun LoginScreen(
     onAuthenticated: () -> Unit,
     onRegister: () -> Unit,
-    viewModel: AuthViewModel = hiltViewModel()
+    viewModel: AuthViewModel = hiltViewModel(),
+    settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     val strings = LocalAppStrings.current
     val uiState by viewModel.uiState.collectAsState()
+    val settings by settingsViewModel.settings.collectAsState()
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var localError by remember { mutableStateOf<String?>(null) }
@@ -113,16 +120,16 @@ fun LoginScreen(
         }.fold(
             onSuccess = { it },
             onFailure = { error ->
-                googleErrorMessage = error.toGoogleSignInMessage()
+                googleErrorMessage = error.toGoogleSignInMessage(strings)
                 null
             }
         )
 
         if (token.isNullOrBlank()) {
             val message = googleErrorMessage ?: if (result.resultCode == Activity.RESULT_OK) {
-                    "Không lấy được Google ID token. Hãy kiểm tra SHA-1/SHA-256 trong Firebase và tải lại google-services.json."
+                    strings.googleMissingIdToken
                 } else {
-                    "Google chưa trả token cho app (resultCode=${result.resultCode}). Hãy kiểm tra provider Google, SHA-1/SHA-256 và tải lại google-services.json."
+                    strings.googleNoTokenWithResultCode.format(result.resultCode)
                 }
             viewModel.showAuthError(message)
         } else {
@@ -136,7 +143,13 @@ fun LoginScreen(
 
     AuthFormScaffold(
         title = strings.loginTitle,
-        subtitle = strings.loginSubtitle
+        subtitle = strings.loginSubtitle,
+        heroAction = {
+            LanguageSelector(
+                selectedLanguage = settings.language,
+                onLanguageSelected = settingsViewModel::setLanguage
+            )
+        }
     ) {
         PinkTextField(
             value = email,
@@ -160,7 +173,7 @@ fun LoginScreen(
         )
         PinkPrimaryButton(
             onClick = {
-                localError = validateEmailPassword(email, password)
+                localError = validateEmailPassword(email, password, strings)
                 if (localError == null) viewModel.login(email, password)
             },
             enabled = !uiState.isLoading
@@ -212,11 +225,11 @@ fun LoginScreen(
             },
             onDismiss = { showResetDialog = false },
             onSubmit = {
-                resetEmailError = validatePasswordResetEmail(resetEmail)
+                resetEmailError = validatePasswordResetEmail(resetEmail, strings)
                 if (resetEmailError == null) {
                     email = resetEmail.trim()
                     showResetDialog = false
-                    viewModel.resetPassword(resetEmail)
+                    viewModel.resetPassword(resetEmail, strings)
                 }
             }
         )
@@ -232,21 +245,23 @@ private fun PasswordResetDialog(
     onDismiss: () -> Unit,
     onSubmit: () -> Unit
 ) {
+    val strings = LocalAppStrings.current
+
     AlertDialog(
         onDismissRequest = {
             if (!isLoading) onDismiss()
         },
-        title = { Text("Đặt lại mật khẩu") },
+        title = { Text(strings.passwordResetTitle) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    "Nhập email đã đăng ký. PinkNote sẽ gửi email chứa mã/link đặt lại mật khẩu để bạn tạo mật khẩu mới.",
+                    strings.passwordResetBody,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 PinkTextField(
                     value = email,
                     onValueChange = onEmailChange,
-                    label = "Email đã đăng ký",
+                    label = strings.registeredEmail,
                     leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
                 )
@@ -257,12 +272,12 @@ private fun PasswordResetDialog(
         },
         confirmButton = {
             Button(onClick = onSubmit, enabled = !isLoading) {
-                Text("Gửi email")
+                Text(strings.sendEmail)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss, enabled = !isLoading) {
-                Text("Hủy")
+                Text(strings.cancel)
             }
         }
     )
@@ -321,8 +336,8 @@ fun RegisterScreen(
         PinkPrimaryButton(
             onClick = {
                 localError = when {
-                    name.isBlank() -> "Hãy nhập tên của bạn."
-                    else -> validateEmailPassword(email, password)
+                    name.isBlank() -> strings.nameRequired
+                    else -> validateEmailPassword(email, password, strings)
                 }
                 if (localError == null) viewModel.register(name, email, password)
             },
@@ -346,21 +361,23 @@ fun RegisterScreen(
     }
 }
 
-private fun Throwable.toGoogleSignInMessage(): String {
+private fun Throwable.toGoogleSignInMessage(strings: AppStrings): String {
     val statusCode = (this as? ApiException)?.statusCode
     return when (statusCode) {
         CommonStatusCodes.DEVELOPER_ERROR ->
-            "Google Sign-In lỗi cấu hình. Hãy thêm SHA-1/SHA-256 debug vào Firebase, tải lại google-services.json rồi cài lại app."
+            strings.googleConfigError
         CommonStatusCodes.NETWORK_ERROR ->
-            "Không thể kết nối Google. Hãy kiểm tra internet, ngày giờ thiết bị và Google Play Services."
+            strings.googleNetworkError
         GoogleSignInStatusCodes.SIGN_IN_CANCELLED ->
-            "Bạn đã hủy đăng nhập Google."
+            strings.googleSignInCancelled
         GoogleSignInStatusCodes.SIGN_IN_CURRENTLY_IN_PROGRESS ->
-            "Google Sign-In đang xử lý, hãy thử lại sau vài giây."
+            strings.googleSignInInProgress
         GoogleSignInStatusCodes.SIGN_IN_FAILED ->
-            "Google Sign-In thất bại. Hãy kiểm tra SHA-1/SHA-256 và provider Google trong Firebase Authentication."
+            strings.googleSignInFailed
         else ->
-            "Google Sign-In thất bại${statusCode?.let { " (mã $it: ${GoogleSignInStatusCodes.getStatusCodeString(it)})" }.orEmpty()}."
+            statusCode?.let {
+                strings.googleSignInFailedWithCode.format(it, GoogleSignInStatusCodes.getStatusCodeString(it))
+            } ?: strings.googleSignInFailed
     }
 }
 
@@ -368,6 +385,7 @@ private fun Throwable.toGoogleSignInMessage(): String {
 private fun AuthFormScaffold(
     title: String,
     subtitle: String,
+    heroAction: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     PinkPage {
@@ -377,7 +395,7 @@ private fun AuthFormScaffold(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            AuthHero(title = title, subtitle = subtitle)
+            AuthHero(title = title, subtitle = subtitle, action = heroAction)
             Spacer(Modifier.height(18.dp))
             Surface(
                 modifier = Modifier.fillMaxWidth(),
@@ -398,7 +416,11 @@ private fun AuthFormScaffold(
 }
 
 @Composable
-private fun AuthHero(title: String, subtitle: String) {
+private fun AuthHero(
+    title: String,
+    subtitle: String,
+    action: (@Composable () -> Unit)? = null
+) {
     val strings = LocalAppStrings.current
     val transition = rememberInfiniteTransition(label = "auth_hero_motion")
     val iconScale by transition.animateFloat(
@@ -418,43 +440,53 @@ private fun AuthHero(title: String, subtitle: String) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Row(
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .graphicsLayer {
-                        scaleX = iconScale
-                        scaleY = iconScale
-                    }
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(PastelPink, RoseDeep)
-                        )
-                    ),
-                contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Favorite,
-                    contentDescription = null,
-                    tint = CreamWhite,
-                    modifier = Modifier.size(24.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .graphicsLayer {
+                            scaleX = iconScale
+                            scaleY = iconScale
+                        }
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(PastelPink, RoseDeep)
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Favorite,
+                        contentDescription = null,
+                        tint = CreamWhite,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Column {
+                    Text(
+                        text = "Pink Note",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = strings.personalCycleJournal,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
-            Column {
-                Text(
-                    text = "Pink Note",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = strings.personalCycleJournal,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            action?.invoke()
         }
 
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -523,6 +555,38 @@ private fun AuthFeatureChip(
                 color = MaterialTheme.colorScheme.primary,
                 maxLines = 1
             )
+        }
+    }
+}
+
+@Composable
+private fun LanguageSelector(
+    selectedLanguage: AppLanguage,
+    onLanguageSelected: (AppLanguage) -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.48f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AppLanguage.entries.forEach { language ->
+                FilterChip(
+                    selected = selectedLanguage == language,
+                    onClick = { onLanguageSelected(language) },
+                    label = {
+                        Text(
+                            text = language.name,
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 1
+                        )
+                    }
+                )
+            }
         }
     }
 }
@@ -636,11 +700,15 @@ private fun AuthStatus(isLoading: Boolean, message: String?, isError: Boolean) {
     }
 }
 
-private fun validateEmailPassword(email: String, password: String): String? {
+private fun validateEmailPassword(
+    email: String,
+    password: String,
+    strings: AppStrings
+): String? {
     return when {
-        email.isBlank() -> "Hãy nhập email."
-        !email.contains("@") -> "Email chưa đúng định dạng."
-        password.length < 6 -> "Mật khẩu cần ít nhất 6 ký tự."
+        email.isBlank() -> strings.emailRequired
+        !email.contains("@") -> strings.invalidEmail
+        password.length < 6 -> strings.passwordTooShort
         else -> null
     }
 }
