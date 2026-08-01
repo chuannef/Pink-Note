@@ -18,7 +18,7 @@ import com.pinknote.app.data.local.entity.UserEntity
         DailyLogEntity::class,
         ReminderEntity::class
     ],
-    version = 4,
+    version = RoomMigrations.CURRENT_VERSION,
     exportSchema = true
 )
 abstract class PinkNoteDatabase : RoomDatabase() {

@@ -3,6 +3,7 @@ package com.pinknote.app.di
 import android.content.Context
 import androidx.room.Room
 import com.pinknote.app.data.local.PinkNoteDatabase
+import com.pinknote.app.data.local.RoomMigrations
 import com.pinknote.app.data.repository.AuthRepositoryImpl
 import com.pinknote.app.data.repository.CycleRepositoryImpl
 import com.pinknote.app.data.repository.ReminderRepositoryImpl
@@ -32,7 +33,7 @@ object AppModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): PinkNoteDatabase {
         return Room.databaseBuilder(context, PinkNoteDatabase::class.java, Constants.DATABASE_NAME)
-            .fallbackToDestructiveMigration()
+            .addMigrations(*RoomMigrations.ALL_MIGRATIONS)
             .build()
     }
 
