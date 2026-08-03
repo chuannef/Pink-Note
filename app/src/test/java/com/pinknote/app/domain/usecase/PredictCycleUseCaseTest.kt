@@ -2,9 +2,11 @@ package com.pinknote.app.domain.usecase
 
 import com.pinknote.app.domain.model.CalendarDayType
 import com.pinknote.app.domain.model.CycleSettings
+import com.pinknote.app.domain.model.DailyLog
 import com.pinknote.app.domain.model.FertilityLevel
 import com.pinknote.app.domain.model.PredictionConfidence
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
@@ -45,7 +47,7 @@ class PredictCycleUseCaseTest {
     }
 
     @Test
-    fun `late period does not automatically create a new cycle`() {
+    fun `late period moves prediction after today without creating a confirmed cycle`() {
         val prediction = useCase(
             settings = CycleSettings(
                 lastPeriodStart = LocalDate.of(2026, 7, 1),
@@ -55,7 +57,8 @@ class PredictCycleUseCaseTest {
             today = LocalDate.of(2026, 7, 31)
         )
 
-        assertEquals(LocalDate.of(2026, 7, 29), prediction.nextPeriodStart)
+        assertEquals(LocalDate.of(2026, 8, 1), prediction.nextPeriodStart)
+        assertEquals(LocalDate.of(2026, 8, 5), prediction.nextPeriodEnd)
         assertEquals(CalendarDayType.LATE_PERIOD, prediction.todayType)
         assertEquals(2, prediction.lateDays)
         assertTrue(prediction.isLate)
@@ -99,6 +102,75 @@ class PredictCycleUseCaseTest {
     }
 
     @Test
+    fun `late unconfirmed period keeps moving the full predicted period window after today`() {
+        val settings = CycleSettings(
+            lastPeriodStart = LocalDate.of(2026, 7, 1),
+            cycleLength = 28,
+            periodLength = 5
+        )
+        val noPeriodLogs = listOf(
+            DailyLog(date = LocalDate.of(2026, 7, 28), isPeriodDay = false),
+            DailyLog(date = LocalDate.of(2026, 7, 29), isPeriodDay = false),
+            DailyLog(date = LocalDate.of(2026, 7, 30), isPeriodDay = false),
+            DailyLog(date = LocalDate.of(2026, 7, 31), isPeriodDay = false)
+        )
+
+        val prediction = useCase(
+            settings = settings,
+            today = LocalDate.of(2026, 8, 2),
+            logs = noPeriodLogs
+        )
+        val augustDays = useCase.buildCalendarDays(
+            settings = settings,
+            monthStart = LocalDate.of(2026, 8, 1),
+            loggedDates = noPeriodLogs.map { it.date }.toSet(),
+            periodConfirmations = noPeriodLogs.associate { it.date to it.isPeriodDay },
+            today = LocalDate.of(2026, 8, 2),
+            logs = noPeriodLogs
+        )
+        val julyDays = useCase.buildCalendarDays(
+            settings = settings,
+            monthStart = LocalDate.of(2026, 7, 1),
+            loggedDates = noPeriodLogs.map { it.date }.toSet(),
+            periodConfirmations = noPeriodLogs.associate { it.date to it.isPeriodDay },
+            today = LocalDate.of(2026, 8, 2),
+            logs = noPeriodLogs
+        )
+
+        assertEquals(LocalDate.of(2026, 8, 3), prediction.nextPeriodStart)
+        assertEquals(LocalDate.of(2026, 8, 7), prediction.nextPeriodEnd)
+        assertEquals(4, prediction.lateDays)
+        assertTrue(prediction.isLate)
+        assertFalse(julyDays.first { it.date == LocalDate.of(2026, 7, 29) }.type in periodLikeTypes)
+        assertFalse(julyDays.first { it.date == LocalDate.of(2026, 7, 30) }.type in periodLikeTypes)
+        assertFalse(julyDays.first { it.date == LocalDate.of(2026, 7, 31) }.type in periodLikeTypes)
+        assertEquals(CalendarDayType.LATE_PERIOD, augustDays.first { it.date == LocalDate.of(2026, 8, 1) }.type)
+        assertEquals(CalendarDayType.LATE_PERIOD, augustDays.first { it.date == LocalDate.of(2026, 8, 2) }.type)
+        assertEquals(CalendarDayType.PREDICTED_PERIOD, augustDays.first { it.date == LocalDate.of(2026, 8, 3) }.type)
+        assertEquals(CalendarDayType.PREDICTED_PERIOD, augustDays.first { it.date == LocalDate.of(2026, 8, 4) }.type)
+        assertEquals(CalendarDayType.PREDICTED_PERIOD, augustDays.first { it.date == LocalDate.of(2026, 8, 5) }.type)
+        assertEquals(CalendarDayType.PREDICTED_PERIOD, augustDays.first { it.date == LocalDate.of(2026, 8, 6) }.type)
+        assertEquals(CalendarDayType.PREDICTED_PERIOD, augustDays.first { it.date == LocalDate.of(2026, 8, 7) }.type)
+    }
+
+    @Test
+    fun `late unconfirmed period moves again on the next day`() {
+        val prediction = useCase(
+            settings = CycleSettings(
+                lastPeriodStart = LocalDate.of(2026, 7, 1),
+                cycleLength = 28,
+                periodLength = 5
+            ),
+            today = LocalDate.of(2026, 8, 3)
+        )
+
+        assertEquals(LocalDate.of(2026, 8, 4), prediction.nextPeriodStart)
+        assertEquals(LocalDate.of(2026, 8, 8), prediction.nextPeriodEnd)
+        assertEquals(5, prediction.lateDays)
+        assertTrue(prediction.isLate)
+    }
+
+    @Test
     fun `calendar does not predict cycles before latest period start`() {
         val days = useCase.buildCalendarDays(
             settings = CycleSettings(
@@ -130,8 +202,16 @@ class PredictCycleUseCaseTest {
         assertEquals(LocalDate.of(2026, 7, 11), estimates.first().date)
         assertEquals(LocalDate.of(2026, 7, 17), estimates.last().date)
         assertEquals(7, estimates.size)
-        assertEquals(42, estimates.first { it.date == LocalDate.of(2026, 7, 14) }.probabilityPercent)
+        assertEquals(32, estimates.first { it.date == LocalDate.of(2026, 7, 14) }.probabilityPercent)
         assertEquals(FertilityLevel.PEAK, estimates.first { it.date == LocalDate.of(2026, 7, 14) }.level)
-        assertEquals(10, estimates.first { it.date == LocalDate.of(2026, 7, 16) }.probabilityPercent)
+        assertEquals(5, estimates.first { it.date == LocalDate.of(2026, 7, 16) }.probabilityPercent)
+    }
+
+    private companion object {
+        val periodLikeTypes = setOf(
+            CalendarDayType.PERIOD,
+            CalendarDayType.PREDICTED_PERIOD,
+            CalendarDayType.LATE_PERIOD
+        )
     }
 }

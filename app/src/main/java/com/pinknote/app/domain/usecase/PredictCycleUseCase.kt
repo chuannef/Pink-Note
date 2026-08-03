@@ -33,7 +33,14 @@ class PredictCycleUseCase @Inject constructor() {
         val variabilityDays = calculateVariability(cycleLengths)
         val confidence = calculateConfidence(cycleLengths.size, variabilityDays)
         val currentPeriodStart = history.periodStarts.lastOrNull() ?: settings.lastPeriodStart
-        val nextPeriodStart = currentPeriodStart.plusDays(weightedCycleLength.toLong())
+        val scheduledNextPeriodStart = currentPeriodStart.plusDays(weightedCycleLength.toLong())
+        val isLate = today.isAfter(scheduledNextPeriodStart) && history.periodStarts.none { !it.isBefore(scheduledNextPeriodStart) }
+        val nextPeriodStart = shiftNextPeriodStartForNoPeriodConfirmations(
+            scheduledNextPeriodStart = scheduledNextPeriodStart,
+            today = today,
+            isLate = isLate,
+            logs = logs
+        )
         val nextPeriodEnd = nextPeriodStart.plusDays(weightedPeriodLength.toLong() - 1)
         val ovulationDate = nextPeriodStart.minusDays(14)
         val fertilePadding = (variabilityDays / 3).coerceIn(0, 4)
@@ -41,13 +48,13 @@ class PredictCycleUseCase @Inject constructor() {
         val fertileEnd = ovulationDate.plusDays(Constants.FERTILE_WINDOW_END_OFFSET.toLong() + fertilePadding)
         val pmsStart = nextPeriodStart.minusDays(7 + fertilePadding.toLong())
         val pmsEnd = nextPeriodStart.minusDays(1)
-        val isLate = today.isAfter(nextPeriodStart) && history.periodStarts.none { !it.isBefore(nextPeriodStart) }
-        val lateDays = if (isLate) ChronoUnit.DAYS.between(nextPeriodStart, today).toInt() else 0
+        val lateDays = if (isLate) ChronoUnit.DAYS.between(scheduledNextPeriodStart, today).toInt() else 0
         val todayType = resolveTypeForDate(
             date = today,
             periodConfirmation = logs.firstOrNull { it.date == today }?.isPeriodDay,
             currentPeriodStart = currentPeriodStart,
             currentPeriodEnd = currentPeriodStart.plusDays(weightedPeriodLength.toLong() - 1),
+            scheduledPeriodStart = scheduledNextPeriodStart,
             predictedPeriodStart = nextPeriodStart,
             predictedPeriodEnd = nextPeriodEnd,
             ovulationDate = ovulationDate,
@@ -102,9 +109,12 @@ class PredictCycleUseCase @Inject constructor() {
         val prediction = invoke(settings, today, logs)
         val firstDay = monthStart.withDayOfMonth(1)
         val endDay = firstDay.plusMonths(1).minusDays(1)
-        val currentPeriodStart = prediction.nextPeriodStart.minusDays(prediction.weightedCycleLength.toLong())
+        val history = buildCycleHistory(settings, logs)
+        val currentPeriodStart = history.periodStarts.lastOrNull() ?: settings.lastPeriodStart
+        val scheduledNextPeriodStart = currentPeriodStart.plusDays(prediction.weightedCycleLength.toLong())
         val periodStarts = buildPeriodStartsForCalendar(
             currentPeriodStart = currentPeriodStart,
+            nextPeriodStart = prediction.nextPeriodStart,
             cycleLength = prediction.weightedCycleLength,
             periodLength = prediction.weightedPeriodLength,
             firstDay = firstDay,
@@ -120,6 +130,7 @@ class PredictCycleUseCase @Inject constructor() {
                     date = date,
                     periodConfirmation = periodConfirmations[date],
                     currentPeriodStart = currentPeriodStart,
+                    scheduledNextPeriodStart = scheduledNextPeriodStart,
                     nextPeriodStart = prediction.nextPeriodStart,
                     periodStarts = periodStarts,
                     periodLength = prediction.weightedPeriodLength,
@@ -175,6 +186,7 @@ class PredictCycleUseCase @Inject constructor() {
 
     private fun buildPeriodStartsForCalendar(
         currentPeriodStart: LocalDate,
+        nextPeriodStart: LocalDate,
         cycleLength: Int,
         periodLength: Int,
         firstDay: LocalDate,
@@ -183,21 +195,29 @@ class PredictCycleUseCase @Inject constructor() {
     ): List<LocalDate> {
         val cycleDays = cycleLength.toLong()
         val lookAheadDays = 14L + Constants.FERTILE_WINDOW_START_OFFSET + fertilePadding + periodLength
-        var periodStart = currentPeriodStart
-
         val periodStarts = mutableListOf<LocalDate>()
         val scheduleEnd = endDay.plusDays(lookAheadDays)
-        while (!periodStart.isAfter(scheduleEnd)) {
-            periodStarts.add(periodStart)
-            periodStart = periodStart.plusDays(cycleDays)
+        val currentPeriodEnd = currentPeriodStart.plusDays(periodLength.toLong() - 1)
+        if (!currentPeriodEnd.isBefore(firstDay) && !currentPeriodStart.isAfter(scheduleEnd)) {
+            periodStarts.add(currentPeriodStart)
         }
-        return periodStarts
+
+        var futurePeriodStart = nextPeriodStart
+        while (futurePeriodStart.plusDays(periodLength.toLong() - 1).isBefore(firstDay)) {
+            futurePeriodStart = futurePeriodStart.plusDays(cycleDays)
+        }
+        while (!futurePeriodStart.isAfter(scheduleEnd)) {
+            periodStarts.add(futurePeriodStart)
+            futurePeriodStart = futurePeriodStart.plusDays(cycleDays)
+        }
+        return periodStarts.distinct().sorted()
     }
 
     private fun resolveTypeForCalendarDate(
         date: LocalDate,
         periodConfirmation: Boolean?,
         currentPeriodStart: LocalDate,
+        scheduledNextPeriodStart: LocalDate,
         nextPeriodStart: LocalDate,
         periodStarts: List<LocalDate>,
         periodLength: Int,
@@ -208,6 +228,7 @@ class PredictCycleUseCase @Inject constructor() {
         val predictedType = resolveScheduledTypeForDate(
             date = date,
             currentPeriodStart = currentPeriodStart,
+            scheduledNextPeriodStart = scheduledNextPeriodStart,
             nextPeriodStart = nextPeriodStart,
             periodStarts = periodStarts,
             periodLength = periodLength,
@@ -226,6 +247,7 @@ class PredictCycleUseCase @Inject constructor() {
     private fun resolveScheduledTypeForDate(
         date: LocalDate,
         currentPeriodStart: LocalDate,
+        scheduledNextPeriodStart: LocalDate,
         nextPeriodStart: LocalDate,
         periodStarts: List<LocalDate>,
         periodLength: Int,
@@ -251,6 +273,9 @@ class PredictCycleUseCase @Inject constructor() {
         if (isLate && !date.isBefore(nextPeriodStart) && !date.isAfter(today)) {
             return CalendarDayType.LATE_PERIOD
         }
+        if (isLate && !date.isBefore(scheduledNextPeriodStart) && date.isBefore(nextPeriodStart) && !date.isAfter(today)) {
+            return CalendarDayType.LATE_PERIOD
+        }
 
         periodStarts.forEach { periodStart ->
             val ovulationDate = periodStart.minusDays(14)
@@ -274,6 +299,7 @@ class PredictCycleUseCase @Inject constructor() {
         periodConfirmation: Boolean?,
         currentPeriodStart: LocalDate,
         currentPeriodEnd: LocalDate,
+        scheduledPeriodStart: LocalDate,
         predictedPeriodStart: LocalDate,
         predictedPeriodEnd: LocalDate,
         ovulationDate: LocalDate,
@@ -286,6 +312,7 @@ class PredictCycleUseCase @Inject constructor() {
     ): CalendarDayType {
         val predictedType = when {
             !date.isBefore(currentPeriodStart) && !date.isAfter(currentPeriodEnd) -> CalendarDayType.PERIOD
+            isLate && !date.isBefore(scheduledPeriodStart) && date.isBefore(predictedPeriodStart) && !date.isAfter(today) -> CalendarDayType.LATE_PERIOD
             isLate && !date.isBefore(predictedPeriodStart) && !date.isAfter(today) -> CalendarDayType.LATE_PERIOD
             !date.isBefore(predictedPeriodStart) && !date.isAfter(predictedPeriodEnd) -> CalendarDayType.PREDICTED_PERIOD
             date == ovulationDate -> CalendarDayType.OVULATION
@@ -357,6 +384,24 @@ class PredictCycleUseCase @Inject constructor() {
         return CycleHistory(starts, durations)
     }
 
+    private fun shiftNextPeriodStartForNoPeriodConfirmations(
+        scheduledNextPeriodStart: LocalDate,
+        today: LocalDate,
+        isLate: Boolean,
+        logs: List<DailyLog>
+    ): LocalDate {
+        val periodConfirmations = logs.associate { it.date to it.isPeriodDay }
+        var shiftedStart = scheduledNextPeriodStart
+        while (periodConfirmations[shiftedStart] == false) {
+            shiftedStart = shiftedStart.plusDays(1)
+        }
+        return if (isLate && !today.isBefore(shiftedStart)) {
+            today.plusDays(1)
+        } else {
+            shiftedStart
+        }
+    }
+
     private fun weightedAverage(values: List<Int>, fallback: Int): Int {
         val recent = values.takeLast(4).reversed()
         if (recent.isEmpty()) return fallback
@@ -396,15 +441,16 @@ class PredictCycleUseCase @Inject constructor() {
     }
 
     private fun probabilityForOvulationOffset(offset: Int): Int {
+        // Conservative day-specific estimates because calendar predictions are less precise than LH or BBT tracking.
         return when (offset) {
-            -5 -> 8
-            -4 -> 18
-            -3 -> 28
-            -2 -> 35
-            -1 -> 42
-            0 -> 38
-            1 -> 10
-            else -> if (offset in -9..4) 5 else 1
+            -5 -> 5
+            -4 -> 10
+            -3 -> 16
+            -2 -> 28
+            -1 -> 32
+            0 -> 20
+            1 -> 5
+            else -> if (offset in -9..4) 2 else 1
         }
     }
 
@@ -414,11 +460,11 @@ class PredictCycleUseCase @Inject constructor() {
 
     private fun fertilityLevel(probability: Int, offset: Int): FertilityLevel {
         return when {
-            offset == -1 -> FertilityLevel.PEAK
-            probability >= 35 -> FertilityLevel.VERY_HIGH
+            offset in -2..-1 -> FertilityLevel.PEAK
+            probability >= 30 -> FertilityLevel.VERY_HIGH
             probability >= 25 -> FertilityLevel.HIGH
-            probability >= 10 -> FertilityLevel.MEDIUM
-            probability >= 3 -> FertilityLevel.LOW
+            probability >= 15 -> FertilityLevel.MEDIUM
+            probability >= 5 -> FertilityLevel.LOW
             else -> FertilityLevel.VERY_LOW
         }
     }

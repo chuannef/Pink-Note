@@ -24,7 +24,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Circle
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -76,7 +75,7 @@ fun CalendarScreen(
                 Text("Lịch chu kỳ", style = MaterialTheme.typography.headlineMedium)
                 Text(
                     if (state.hasCycleSetup) {
-                        "Chọn một ngày để xem xác suất quanh ngày đó, hoặc mở nhật ký để ghi lại triệu chứng."
+                        "Chạm vào một ngày để mở nhật ký và chỉnh thông tin của ngày đó."
                     } else {
                         "Hãy thiết lập chu kỳ ở trang Home để Pink Note bắt đầu dự đoán lịch."
                     },
@@ -128,7 +127,10 @@ fun CalendarScreen(
                                 day = cell.day,
                                 selected = cell.day.date == state.selectedDate,
                                 today = cell.day.date == LocalDate.now(),
-                                onClick = { viewModel.selectDate(cell.day.date) }
+                                onClick = {
+                                    viewModel.selectDate(cell.day.date)
+                                    onOpenDailyLog(cell.day.date.toString())
+                                }
                             )
                         }
                     }
@@ -156,9 +158,6 @@ fun CalendarScreen(
                         if (selectedDay?.hasLog == true) {
                             Text("Đã ghi", style = MaterialTheme.typography.labelLarge, color = RoseDeep)
                         }
-                    }
-                    Button(onClick = { onOpenDailyLog(state.selectedDate.toString()) }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Mở nhật ký ngày này")
                     }
                 }
 
