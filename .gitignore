@@ -30,6 +30,9 @@ captures/
 # Logs
 *.log
 
+# Codex temporary document render outputs
+.codex_docx_render*/
+
 # OS files
 .DS_Store
 Thumbs.db

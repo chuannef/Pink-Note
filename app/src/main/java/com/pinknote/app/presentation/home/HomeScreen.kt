@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.LocalDrink
 import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material.icons.filled.TipsAndUpdates
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -53,7 +54,11 @@ import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
 import com.pinknote.app.domain.model.AppLanguage
+import com.pinknote.app.domain.model.AppMode
 import com.pinknote.app.domain.model.DailyLog
+import com.pinknote.app.domain.model.PregnancySettings
+import com.pinknote.app.domain.model.PregnancySummary
+import com.pinknote.app.domain.model.PregnancyTrimester
 import com.pinknote.app.presentation.common.PinkCard
 import com.pinknote.app.presentation.common.PinkMetric
 import com.pinknote.app.presentation.common.PinkPage
@@ -92,6 +97,21 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Header(name = state.user?.name?.ifBlank { "PinkNote" } ?: "PinkNote")
+            ModeSwitcher(
+                selectedMode = state.appMode,
+                language = strings.languageCode,
+                onModeSelected = viewModel::saveAppMode
+            )
+            if (state.appMode == AppMode.PREGNANCY) {
+                PregnancyHomeContent(
+                    summary = state.pregnancySummary,
+                    settings = state.pregnancySettings,
+                    language = strings.languageCode,
+                    onSave = viewModel::savePregnancy
+                )
+                Spacer(Modifier.height(8.dp))
+                return@Column
+            }
             CycleHero(
                 progress = progress,
                 countdownText = prediction?.countdownText ?: "Thiết lập chu kỳ để PinkNote dự đoán chính xác hơn.",
@@ -124,13 +144,233 @@ fun HomeScreen(
                     modifier = Modifier.weight(1f),
                     supporting = prediction?.fertilityTodayLevel?.name?.replace('_', ' ').orEmpty()
                 )
-            }
-            TipCard(uid = state.user?.uid.orEmpty())
-            StatisticsSummary(statisticsState)
-            if (state.isEmpty) {
-                CycleSetupCard(state = state, onSave = viewModel::saveCycle)
-            }
+                }
+                TipCard(uid = state.user?.uid.orEmpty())
+                CycleEducationCard(strings.languageCode)
+                StatisticsSummary(statisticsState)
+                if (state.isEmpty) {
+                    CycleSetupCard(state = state, onSave = viewModel::saveCycle)
+                }
             Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+private fun ModeSwitcher(
+    selectedMode: AppMode,
+    language: AppLanguage,
+    onModeSelected: (AppMode) -> Unit
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        AppMode.entries.forEach { mode ->
+            FilterChip(
+                selected = selectedMode == mode,
+                onClick = { onModeSelected(mode) },
+                label = { Text(appModeLabel(mode, language)) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun PregnancyHomeContent(
+    summary: PregnancySummary?,
+    settings: PregnancySettings?,
+    language: AppLanguage,
+    onSave: (LocalDate?, LocalDate?) -> Unit
+) {
+    val progress by animateFloatAsState(
+        targetValue = summary?.progress ?: 0f,
+        animationSpec = spring(dampingRatio = 0.82f, stiffness = 90f),
+        label = "pregnancy-progress"
+    )
+
+    PinkCard(containerColor = BlushSurface) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(18.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(132.dp)) {
+                CircularProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.size(132.dp),
+                    strokeWidth = 10.dp,
+                    trackColor = CreamWhite,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        summary?.let { "${it.gestationalWeek}w" } ?: "--",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(pregnancyWeekLabel(language), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(Icons.Default.Favorite, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Text(pregnancyModeTitle(language), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                }
+                Text(
+                    summary?.let { pregnancyStatusText(it, language) } ?: pregnancySetupPrompt(language),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+    }
+
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+        PinkMetric(
+            label = dueDateLabel(language),
+            value = summary?.dueDate?.toStorageString().orEmpty(),
+            modifier = Modifier.weight(1f),
+            supporting = estimateLabel(language)
+        )
+        PinkMetric(
+            label = trimesterLabel(language),
+            value = summary?.trimester?.let { trimesterText(it, language) }.orEmpty(),
+            modifier = Modifier.weight(1f),
+            supporting = pregnancyCareLabel(language)
+        )
+    }
+    PregnancyEducationCard(language)
+    PregnancyWarningCard(language)
+    PregnancySetupCard(settings = settings, language = language, onSave = onSave)
+}
+
+@Composable
+private fun PregnancyEducationCard(language: AppLanguage) {
+    val items = when (language) {
+        AppLanguage.VI -> listOf(
+            "Thai kỳ thường được theo dõi theo từng tuần và chia thành 3 tam cá nguyệt.",
+            "Ghi lại triệu chứng, cân nặng, lịch khám và câu hỏi muốn hỏi bác sĩ.",
+            "Nội dung trong app chỉ hỗ trợ theo dõi, không thay thế tư vấn y tế."
+        )
+        AppLanguage.EN -> listOf(
+            "Pregnancy is usually tracked by week and grouped into 3 trimesters.",
+            "Record symptoms, weight, appointments, and questions for your clinician.",
+            "App content supports tracking only and does not replace medical advice."
+        )
+    }
+
+    PinkCard(containerColor = CreamWhite) {
+        Text(educationTitle(language), style = MaterialTheme.typography.titleMedium)
+        items.forEach { item ->
+            Text(item, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun CycleEducationCard(language: AppLanguage) {
+    val items = when (language) {
+        AppLanguage.VI -> listOf(
+            "Kinh nguyệt là một phần tự nhiên của tuổi dậy thì và sức khỏe sinh sản.",
+            "Dậy thì có thể làm cơ thể, cảm xúc và sự tự tin thay đổi theo thời gian.",
+            "Giữ vệ sinh cá nhân, thay băng/tampon/cốc nguyệt san đúng cách và rửa tay sạch.",
+            "Hãy nói với mẹ, người tin tưởng hoặc bác sĩ nếu đau dữ dội, ra máu quá nhiều, chóng mặt hoặc lo lắng.",
+            "Cơ thể của bạn thuộc về bạn. Ranh giới cá nhân, an toàn và đồng thuận luôn quan trọng."
+        )
+        AppLanguage.EN -> listOf(
+            "Periods are a natural part of puberty and reproductive health.",
+            "Puberty can change your body, emotions, and body confidence over time.",
+            "Keep personal hygiene, change period products safely, and wash your hands.",
+            "Talk to a parent, trusted adult, or clinician if pain is severe, bleeding is very heavy, you feel dizzy, or you feel worried.",
+            "Your body belongs to you. Personal boundaries, safety, and consent always matter."
+        )
+    }
+
+    PinkCard(containerColor = CreamWhite) {
+        Text(cycleEducationTitle(language), style = MaterialTheme.typography.titleMedium)
+        items.forEach { item ->
+            Text(item, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun PregnancyWarningCard(language: AppLanguage) {
+    PinkCard(containerColor = CreamWhite) {
+        Text(warningTitle(language), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Text(
+            warningBody(language),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun PregnancySetupCard(
+    settings: PregnancySettings?,
+    language: AppLanguage,
+    onSave: (LocalDate?, LocalDate?) -> Unit
+) {
+    var lmp by remember(settings?.lastMenstrualPeriod) {
+        val text = settings?.lastMenstrualPeriod?.toStorageString().orEmpty()
+        mutableStateOf(TextFieldValue(text = text, selection = TextRange(text.length)))
+    }
+    var dueDate by remember(settings?.dueDate) {
+        val text = settings?.dueDate?.toStorageString().orEmpty()
+        mutableStateOf(TextFieldValue(text = text, selection = TextRange(text.length)))
+    }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    PinkCard {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Column {
+                Text(pregnancySetupTitle(language), style = MaterialTheme.typography.titleMedium)
+                Text(
+                    pregnancySetupHint(language),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        PinkFieldValue(
+            value = lmp,
+            onValueChange = {
+                val formatted = formatCycleDateInput(rawInput = it.text, previousValue = lmp.text)
+                lmp = TextFieldValue(text = formatted, selection = TextRange(formatted.length))
+                errorMessage = null
+            },
+            label = lmpLabel(language),
+            keyboardType = KeyboardType.Number
+        )
+        PinkFieldValue(
+            value = dueDate,
+            onValueChange = {
+                val formatted = formatCycleDateInput(rawInput = it.text, previousValue = dueDate.text)
+                dueDate = TextFieldValue(text = formatted, selection = TextRange(formatted.length))
+                errorMessage = null
+            },
+            label = dueDateInputLabel(language),
+            keyboardType = KeyboardType.Number
+        )
+        errorMessage?.let {
+            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+        }
+        PinkPrimaryButton(
+            onClick = {
+                val parsedLmp = lmp.text.takeIf { it.isNotBlank() }?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+                val parsedDueDate = dueDate.text.takeIf { it.isNotBlank() }?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+                errorMessage = when {
+                    lmp.text.isBlank() && dueDate.text.isBlank() -> pregnancyDateRequired(language)
+                    lmp.text.isNotBlank() && parsedLmp == null -> pregnancyInvalidDate(language)
+                    dueDate.text.isNotBlank() && parsedDueDate == null -> pregnancyInvalidDate(language)
+                    else -> null
+                }
+                if (errorMessage == null) {
+                    onSave(parsedLmp, parsedDueDate)
+                }
+            }
+        ) {
+            Text(savePregnancyLabel(language))
         }
     }
 }
@@ -490,4 +730,137 @@ private fun TipCard(uid: String) {
             }
         }
     }
+}
+
+private fun appModeLabel(mode: AppMode, language: AppLanguage): String {
+    return when (mode) {
+        AppMode.CYCLE_TRACKING -> when (language) {
+            AppLanguage.VI -> "Theo dõi chu kỳ"
+            AppLanguage.EN -> "Cycle tracking"
+        }
+        AppMode.PREGNANCY -> when (language) {
+            AppLanguage.VI -> "Thai kỳ"
+            AppLanguage.EN -> "Pregnancy"
+        }
+    }
+}
+
+private fun pregnancyModeTitle(language: AppLanguage): String = when (language) {
+    AppLanguage.VI -> "Hành trình thai kỳ"
+    AppLanguage.EN -> "Pregnancy journey"
+}
+
+private fun pregnancyWeekLabel(language: AppLanguage): String = when (language) {
+    AppLanguage.VI -> "tuần thai"
+    AppLanguage.EN -> "weeks"
+}
+
+private fun pregnancySetupPrompt(language: AppLanguage): String = when (language) {
+    AppLanguage.VI -> "Thiết lập ngày đầu kỳ kinh cuối hoặc ngày dự sinh để Pink Note theo dõi thai kỳ."
+    AppLanguage.EN -> "Set your last menstrual period or due date so Pink Note can track your pregnancy."
+}
+
+private fun pregnancyStatusText(summary: PregnancySummary, language: AppLanguage): String = when (language) {
+    AppLanguage.VI -> when {
+        summary.daysUntilDue > 0 -> "Còn ${summary.daysUntilDue} ngày đến ngày dự sinh ước tính."
+        summary.daysUntilDue == 0L -> "Hôm nay là ngày dự sinh ước tính."
+        else -> "Đã qua ngày dự sinh ước tính ${-summary.daysUntilDue} ngày."
+    }
+    AppLanguage.EN -> when {
+        summary.daysUntilDue > 0 -> "${summary.daysUntilDue} days until the estimated due date."
+        summary.daysUntilDue == 0L -> "Today is the estimated due date."
+        else -> "${-summary.daysUntilDue} days past the estimated due date."
+    }
+}
+
+private fun dueDateLabel(language: AppLanguage): String = when (language) {
+    AppLanguage.VI -> "Ngày dự sinh"
+    AppLanguage.EN -> "Due date"
+}
+
+private fun estimateLabel(language: AppLanguage): String = when (language) {
+    AppLanguage.VI -> "Ước tính"
+    AppLanguage.EN -> "Estimated"
+}
+
+private fun trimesterLabel(language: AppLanguage): String = when (language) {
+    AppLanguage.VI -> "Tam cá nguyệt"
+    AppLanguage.EN -> "Trimester"
+}
+
+private fun pregnancyCareLabel(language: AppLanguage): String = when (language) {
+    AppLanguage.VI -> "Theo tuần"
+    AppLanguage.EN -> "Weekly care"
+}
+
+private fun trimesterText(trimester: PregnancyTrimester, language: AppLanguage): String {
+    return when (trimester) {
+        PregnancyTrimester.FIRST -> when (language) {
+            AppLanguage.VI -> "Thứ 1"
+            AppLanguage.EN -> "First"
+        }
+        PregnancyTrimester.SECOND -> when (language) {
+            AppLanguage.VI -> "Thứ 2"
+            AppLanguage.EN -> "Second"
+        }
+        PregnancyTrimester.THIRD -> when (language) {
+            AppLanguage.VI -> "Thứ 3"
+            AppLanguage.EN -> "Third"
+        }
+    }
+}
+
+private fun educationTitle(language: AppLanguage): String = when (language) {
+    AppLanguage.VI -> "Kiến thức thai kỳ"
+    AppLanguage.EN -> "Pregnancy education"
+}
+
+private fun cycleEducationTitle(language: AppLanguage): String = when (language) {
+    AppLanguage.VI -> "Giáo dục sức khỏe"
+    AppLanguage.EN -> "Health education"
+}
+
+private fun warningTitle(language: AppLanguage): String = when (language) {
+    AppLanguage.VI -> "Khi cần liên hệ bác sĩ"
+    AppLanguage.EN -> "When to contact a clinician"
+}
+
+private fun warningBody(language: AppLanguage): String = when (language) {
+    AppLanguage.VI -> "Nếu có đau đầu dữ dội, nhìn mờ, đau ngực, khó thở, ra máu, đau bụng dữ dội, rỉ dịch hoặc thai máy giảm, hãy liên hệ bác sĩ hoặc cơ sở y tế ngay."
+    AppLanguage.EN -> "If you have a severe headache, vision changes, chest pain, trouble breathing, bleeding, severe belly pain, fluid leakage, or reduced fetal movement, contact a clinician or emergency care."
+}
+
+private fun pregnancySetupTitle(language: AppLanguage): String = when (language) {
+    AppLanguage.VI -> "Thiết lập thai kỳ"
+    AppLanguage.EN -> "Pregnancy setup"
+}
+
+private fun pregnancySetupHint(language: AppLanguage): String = when (language) {
+    AppLanguage.VI -> "Nhập một trong hai ngày. Nếu bác sĩ đã cho ngày dự sinh, hãy ưu tiên ngày dự sinh."
+    AppLanguage.EN -> "Enter either date. If a clinician gave you a due date, prefer that date."
+}
+
+private fun lmpLabel(language: AppLanguage): String = when (language) {
+    AppLanguage.VI -> "Ngày đầu kỳ kinh cuối yyyy-MM-dd"
+    AppLanguage.EN -> "Last menstrual period yyyy-MM-dd"
+}
+
+private fun dueDateInputLabel(language: AppLanguage): String = when (language) {
+    AppLanguage.VI -> "Ngày dự sinh yyyy-MM-dd"
+    AppLanguage.EN -> "Due date yyyy-MM-dd"
+}
+
+private fun pregnancyDateRequired(language: AppLanguage): String = when (language) {
+    AppLanguage.VI -> "Hãy nhập ngày đầu kỳ kinh cuối hoặc ngày dự sinh."
+    AppLanguage.EN -> "Enter a last menstrual period or due date."
+}
+
+private fun pregnancyInvalidDate(language: AppLanguage): String = when (language) {
+    AppLanguage.VI -> "Hãy nhập ngày theo định dạng yyyy-MM-dd."
+    AppLanguage.EN -> "Enter a date in yyyy-MM-dd format."
+}
+
+private fun savePregnancyLabel(language: AppLanguage): String = when (language) {
+    AppLanguage.VI -> "Lưu thai kỳ"
+    AppLanguage.EN -> "Save pregnancy"
 }

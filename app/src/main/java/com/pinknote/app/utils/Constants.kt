@@ -3,6 +3,7 @@ package com.pinknote.app.utils
 object Constants {
     const val USERS_COLLECTION = "users"
     const val CYCLE_COLLECTION = "cycle"
+    const val PREGNANCY_COLLECTION = "pregnancy"
     const val DAILY_LOGS_COLLECTION = "daily_logs"
     const val NOTIFICATIONS_COLLECTION = "notifications"
     const val SETTINGS_COLLECTION = "settings"

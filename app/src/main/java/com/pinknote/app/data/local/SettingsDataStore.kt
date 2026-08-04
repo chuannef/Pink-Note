@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.pinknote.app.domain.model.AppLanguage
+import com.pinknote.app.domain.model.AppMode
 import com.pinknote.app.domain.model.AppSettings
 import com.pinknote.app.domain.model.ThemeMode
 import com.pinknote.app.utils.Constants
@@ -24,13 +25,15 @@ class SettingsDataStore @Inject constructor(
     private object Keys {
         val themeMode = stringPreferencesKey("theme_mode")
         val language = stringPreferencesKey("language")
+        val appMode = stringPreferencesKey("app_mode")
         val notificationsEnabled = booleanPreferencesKey("notifications_enabled")
     }
 
     val settings: Flow<AppSettings> = context.settingsDataStore.data.map { preferences ->
         AppSettings(
-            themeMode = preferences[Keys.themeMode]?.let(ThemeMode::valueOf) ?: ThemeMode.SYSTEM,
-            language = preferences[Keys.language]?.let(AppLanguage::valueOf) ?: AppLanguage.VI,
+            themeMode = preferences[Keys.themeMode]?.toEnumOrNull<ThemeMode>() ?: ThemeMode.SYSTEM,
+            language = preferences[Keys.language]?.toEnumOrNull<AppLanguage>() ?: AppLanguage.VI,
+            appMode = preferences[Keys.appMode]?.toEnumOrNull<AppMode>() ?: AppMode.CYCLE_TRACKING,
             notificationsEnabled = preferences[Keys.notificationsEnabled] ?: true
         )
     }
@@ -39,7 +42,12 @@ class SettingsDataStore @Inject constructor(
         context.settingsDataStore.edit { preferences ->
             preferences[Keys.themeMode] = settings.themeMode.name
             preferences[Keys.language] = settings.language.name
+            preferences[Keys.appMode] = settings.appMode.name
             preferences[Keys.notificationsEnabled] = settings.notificationsEnabled
         }
+    }
+
+    private inline fun <reified T : Enum<T>> String.toEnumOrNull(): T? {
+        return runCatching { enumValueOf<T>(this) }.getOrNull()
     }
 }

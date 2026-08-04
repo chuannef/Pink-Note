@@ -6,11 +6,13 @@ import com.pinknote.app.data.local.PinkNoteDatabase
 import com.pinknote.app.data.local.RoomMigrations
 import com.pinknote.app.data.repository.AuthRepositoryImpl
 import com.pinknote.app.data.repository.CycleRepositoryImpl
+import com.pinknote.app.data.repository.PregnancyRepositoryImpl
 import com.pinknote.app.data.repository.ReminderRepositoryImpl
 import com.pinknote.app.data.repository.SettingsRepositoryImpl
 import com.pinknote.app.data.repository.UserRepositoryImpl
 import com.pinknote.app.domain.repository.AuthRepository
 import com.pinknote.app.domain.repository.CycleRepository
+import com.pinknote.app.domain.repository.PregnancyRepository
 import com.pinknote.app.domain.repository.ReminderRepository
 import com.pinknote.app.domain.repository.SettingsRepository
 import com.pinknote.app.domain.repository.UserRepository
@@ -40,6 +42,7 @@ object AppModule {
     @Provides fun provideUserDao(database: PinkNoteDatabase) = database.userDao()
     @Provides fun provideCycleDao(database: PinkNoteDatabase) = database.cycleDao()
     @Provides fun provideDailyLogDao(database: PinkNoteDatabase) = database.dailyLogDao()
+    @Provides fun providePregnancyDao(database: PinkNoteDatabase) = database.pregnancyDao()
     @Provides fun provideReminderDao(database: PinkNoteDatabase) = database.reminderDao()
 
     @Provides @Singleton fun provideFirebaseAuth(): FirebaseAuth = FirebaseAuth.getInstance()
@@ -52,6 +55,7 @@ object AppModule {
 abstract class RepositoryModule {
     @Binds @Singleton abstract fun bindAuthRepository(impl: AuthRepositoryImpl): AuthRepository
     @Binds @Singleton abstract fun bindCycleRepository(impl: CycleRepositoryImpl): CycleRepository
+    @Binds @Singleton abstract fun bindPregnancyRepository(impl: PregnancyRepositoryImpl): PregnancyRepository
     @Binds @Singleton abstract fun bindUserRepository(impl: UserRepositoryImpl): UserRepository
     @Binds @Singleton abstract fun bindReminderRepository(impl: ReminderRepositoryImpl): ReminderRepository
     @Binds @Singleton abstract fun bindSettingsRepository(impl: SettingsRepositoryImpl): SettingsRepository

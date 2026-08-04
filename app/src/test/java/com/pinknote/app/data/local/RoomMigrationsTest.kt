@@ -6,9 +6,9 @@ import org.junit.Test
 class RoomMigrationsTest {
     @Test
     fun `all migrations cover every historical database version`() {
-        assertEquals(4, RoomMigrations.CURRENT_VERSION)
+        assertEquals(5, RoomMigrations.CURRENT_VERSION)
         assertEquals(
-            listOf(1 to 2, 2 to 3, 3 to 4),
+            listOf(1 to 2, 2 to 3, 3 to 4, 4 to 5),
             RoomMigrations.ALL_MIGRATIONS.map { it.startVersion to it.endVersion }
         )
     }

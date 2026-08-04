@@ -2,10 +2,12 @@ package com.pinknote.app.data.repository
 
 import com.pinknote.app.data.local.entity.CycleEntity
 import com.pinknote.app.data.local.entity.DailyLogEntity
+import com.pinknote.app.data.local.entity.PregnancyEntity
 import com.pinknote.app.data.local.entity.ReminderEntity
 import com.pinknote.app.data.local.entity.UserEntity
 import com.pinknote.app.domain.model.CycleSettings
 import com.pinknote.app.domain.model.DailyLog
+import com.pinknote.app.domain.model.PregnancySettings
 import com.pinknote.app.domain.model.Reminder
 import com.pinknote.app.domain.model.ReminderType
 import com.pinknote.app.domain.model.UserProfile
@@ -60,6 +62,20 @@ fun CycleEntity.toDomain() = CycleSettings(
     lastPeriodStart = parseStorageDate(lastPeriodStart),
     cycleLength = cycleLength,
     periodLength = periodLength,
+    updatedAtEpochMillis = updatedAtEpochMillis
+)
+
+fun PregnancySettings.toEntity() = PregnancyEntity(
+    uid = uid,
+    lastMenstrualPeriod = lastMenstrualPeriod?.toStorageString(),
+    dueDate = dueDate?.toStorageString(),
+    updatedAtEpochMillis = updatedAtEpochMillis
+)
+
+fun PregnancyEntity.toDomain() = PregnancySettings(
+    uid = uid,
+    lastMenstrualPeriod = lastMenstrualPeriod?.let(::parseStorageDate),
+    dueDate = dueDate?.let(::parseStorageDate),
     updatedAtEpochMillis = updatedAtEpochMillis
 )
 

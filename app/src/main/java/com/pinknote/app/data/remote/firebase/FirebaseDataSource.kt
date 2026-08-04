@@ -5,6 +5,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.pinknote.app.domain.model.CycleSettings
 import com.pinknote.app.domain.model.DailyLog
+import com.pinknote.app.domain.model.PregnancySettings
 import com.pinknote.app.domain.model.Reminder
 import com.pinknote.app.domain.model.UserProfile
 import com.pinknote.app.R
@@ -103,6 +104,7 @@ class FirebaseDataSource @Inject constructor(
         val batch = firestore.batch()
         batch.delete(firestore.collection(Constants.USERS_COLLECTION).document(uid))
         batch.delete(firestore.collection(Constants.CYCLE_COLLECTION).document(uid))
+        batch.delete(firestore.collection(Constants.PREGNANCY_COLLECTION).document(uid))
         batch.delete(firestore.collection(Constants.DAILY_LOGS_COLLECTION).document(uid))
         batch.delete(firestore.collection(Constants.NOTIFICATIONS_COLLECTION).document(uid))
         batch.commit().await()
@@ -215,6 +217,13 @@ class FirebaseDataSource @Inject constructor(
             .await()
     }
 
+    suspend fun savePregnancy(settings: PregnancySettings) {
+        firestore.collection(Constants.PREGNANCY_COLLECTION)
+            .document(settings.uid)
+            .set(settings.toFirestoreMap())
+            .await()
+    }
+
     suspend fun saveDailyLog(log: DailyLog) {
         firestore.collection(Constants.DAILY_LOGS_COLLECTION)
             .document(log.uid)
@@ -252,6 +261,12 @@ class FirebaseDataSource @Inject constructor(
         "lastPeriod" to lastPeriodStart.toStorageString(),
         "cycleLength" to cycleLength,
         "periodLength" to periodLength,
+        "updatedAt" to updatedAtEpochMillis
+    )
+
+    private fun PregnancySettings.toFirestoreMap(): Map<String, Any?> = mapOf(
+        "lastMenstrualPeriod" to lastMenstrualPeriod?.toStorageString(),
+        "dueDate" to dueDate?.toStorageString(),
         "updatedAt" to updatedAtEpochMillis
     )
 

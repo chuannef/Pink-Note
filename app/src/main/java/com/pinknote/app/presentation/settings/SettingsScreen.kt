@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pinknote.app.domain.model.AppLanguage
+import com.pinknote.app.domain.model.AppMode
 import com.pinknote.app.domain.model.ThemeMode
 import com.pinknote.app.presentation.common.PinkCard
 import com.pinknote.app.presentation.localization.AppStrings
@@ -86,6 +87,16 @@ fun SettingsScreen(
                     selected = settings.language == language,
                     onClick = { viewModel.setLanguage(language) },
                     label = { Text(strings.languageLabel(language)) }
+                )
+            }
+        }
+        Text(appModeSectionTitle(settings.language), style = MaterialTheme.typography.titleMedium)
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            AppMode.entries.forEach { appMode ->
+                FilterChip(
+                    selected = settings.appMode == appMode,
+                    onClick = { viewModel.setAppMode(appMode) },
+                    label = { Text(appModeLabel(appMode, settings.language)) }
                 )
             }
         }
@@ -211,6 +222,26 @@ private fun AppStrings.themeModeLabel(mode: ThemeMode): String {
         ThemeMode.SYSTEM -> themeSystem
         ThemeMode.LIGHT -> themeLight
         ThemeMode.DARK -> themeDark
+    }
+}
+
+private fun appModeSectionTitle(language: AppLanguage): String {
+    return when (language) {
+        AppLanguage.VI -> "Chế độ sử dụng"
+        AppLanguage.EN -> "App mode"
+    }
+}
+
+private fun appModeLabel(appMode: AppMode, language: AppLanguage): String {
+    return when (appMode) {
+        AppMode.CYCLE_TRACKING -> when (language) {
+            AppLanguage.VI -> "Theo dõi chu kỳ"
+            AppLanguage.EN -> "Cycle tracking"
+        }
+        AppMode.PREGNANCY -> when (language) {
+            AppLanguage.VI -> "Thai kỳ"
+            AppLanguage.EN -> "Pregnancy"
+        }
     }
 }
 

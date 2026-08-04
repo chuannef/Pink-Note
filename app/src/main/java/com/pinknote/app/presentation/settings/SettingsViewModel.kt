@@ -5,6 +5,7 @@ package com.pinknote.app.presentation.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pinknote.app.domain.model.AppLanguage
+import com.pinknote.app.domain.model.AppMode
 import com.pinknote.app.domain.model.AppSettings
 import com.pinknote.app.domain.model.AppResult
 import com.pinknote.app.domain.model.ThemeMode
@@ -65,6 +66,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setLanguage(language: AppLanguage) {
         save(settings.value.copy(language = language))
+    }
+
+    fun setAppMode(appMode: AppMode) {
+        save(settings.value.copy(appMode = appMode))
     }
 
     fun setNotificationsEnabled(enabled: Boolean) {
