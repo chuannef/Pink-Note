@@ -10,16 +10,20 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MonitorHeart
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.Icon
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -43,6 +47,7 @@ import java.time.LocalDate
 fun DailyLogScreen(
     dateText: String,
     onSaved: () -> Unit,
+    onCancel: () -> Unit,
     viewModel: DailyLogViewModel = hiltViewModel()
 ) {
     val date = runCatching { LocalDate.parse(dateText) }.getOrElse { LocalDate.now() }
@@ -99,9 +104,18 @@ fun DailyLogScreen(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                IconButton(onClick = onCancel) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Quay lại", tint = MaterialTheme.colorScheme.primary)
+                }
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("Nhật ký ngày $date", style = MaterialTheme.typography.headlineMedium)
                 Text("Ghi lại những tín hiệu nhỏ để PinkNote hiểu chu kỳ của bạn hơn.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             }
             PinkCard {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -181,6 +195,26 @@ fun DailyLogScreen(
                     Text("Lưu ghi chú")
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun DailyLogHeader(date: LocalDate, onCancel: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
+            Text("Chọn ngày $date", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            Text("Bạn có thể thoát mà không lưu thay đổi.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        TextButton(
+            onClick = onCancel,
+            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+        ) {
+            Text("Thoát")
         }
     }
 }
